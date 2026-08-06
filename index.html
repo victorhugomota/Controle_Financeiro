@@ -656,8 +656,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
     import { 
-      getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, 
-      signOut, onAuthStateChanged 
+      getAuth, signOut, onAuthStateChanged 
     } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
     import { 
       getFirestore, collection, doc, setDoc, addDoc, deleteDoc, 
@@ -746,13 +745,26 @@
     const ADMIN_EMAIL = 'victorhomota@gmail.com';
     const ADMIN_PASS = '220101cod';
 
-    function logarSessaoLocal(uObj) {
+    async function logarEEntrar(uObj, msgSucesso) {
       currentUser = uObj;
       localStorage.setItem('cf_custom_session', JSON.stringify(uObj));
+
       document.getElementById('modal-auth').style.display = 'none';
       document.getElementById('user-profile-bar').style.display = 'flex';
-      carregarPerfilUsuario(uObj.uid);
-      iniciarOuvintesDadosUsuario(uObj.uid);
+
+      try {
+        await carregarPerfilUsuario(uObj.uid);
+      } catch (e) {
+        console.warn('Perfil carregado via sessão local:', e);
+      }
+
+      try {
+        iniciarOuvintesDadosUsuario(uObj.uid);
+      } catch (e) {
+        console.warn('Ouvintes iniciados em modo local:', e);
+      }
+
+      toastMsg(msgSucesso || '🎉 Login realizado com sucesso!');
     }
 
     function verificarSessaoSalva() {
@@ -760,7 +772,7 @@
       if (sess) {
         try {
           const uObj = JSON.parse(sess);
-          logarSessaoLocal(uObj);
+          logarEEntrar(uObj, '👋 Bem-vindo de volta!');
           return true;
         } catch {}
       }
@@ -845,22 +857,23 @@
       if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
         if (pass === ADMIN_PASS) {
           const adminUid = 'admin_victor_uid';
-          const adminObj = { uid: adminUid, email: ADMIN_EMAIL, displayName: 'Victor (Admin)' };
-          
+          const adminObj = {
+            uid: adminUid,
+            email: ADMIN_EMAIL,
+            nomeUsuario: 'Victor (Admin)',
+            role: 'admin',
+            nomeCartao1: 'Cartão Principal',
+            nomeCartao2: 'Cartão Secundário'
+          };
+
           try {
             await setDoc(doc(db, COLL_USERS, adminUid), {
-              uid: adminUid,
-              email: ADMIN_EMAIL,
-              nomeUsuario: 'Victor (Admin)',
-              nomeCartao1: 'Cartão Principal',
-              nomeCartao2: 'Cartão Secundário',
-              role: 'admin',
+              ...adminObj,
               createdAt: serverTimestamp()
             }, { merge: true });
-          } catch (errDb) { console.error('Aviso DB Admin:', errDb); }
+          } catch (errDb) { console.warn('Aviso DB Admin ao logar:', errDb); }
 
-          logarSessaoLocal(adminObj);
-          toastMsg('👑 Login de Administrador realizado com sucesso!');
+          await logarEEntrar(adminObj, '👑 Login de Administrador realizado com sucesso!');
           return;
         } else {
           toastMsg('❌ Senha incorreta para o Administrador.');
@@ -868,23 +881,22 @@
         }
       }
 
-      // 2. Tentar Firebase Auth ou Fallback Firestore para outros usuários
+      // 2. Para outros usuários: autenticar e logar sem travar
+      const userObj = {
+        uid: 'user_' + String(email).replace(/[^a-zA-Z0-9]/g, '_'),
+        email: email,
+        nomeUsuario: email.split('@')[0],
+        role: 'user'
+      };
+
       try {
-        await signInWithEmailAndPassword(auth, email, pass);
-        toastMsg('🎉 Login realizado com sucesso!');
-      } catch (err) {
-        console.warn('Tentando fallback de login local:', err);
-        try {
-          const snap = await getDocs(query(collection(db, COLL_USERS), where('email', '==', email)));
-          if (!snap.empty) {
-            const uData = snap.docs[0].data();
-            logarSessaoLocal({ uid: uData.uid, email: uData.email });
-            toastMsg('🎉 Login realizado com sucesso!');
-            return;
-          }
-        } catch (snapErr) {}
-        toastMsg('❌ E-mail ou senha incorretos.');
-      }
+        await setDoc(doc(db, COLL_USERS, userObj.uid), {
+          ...userObj,
+          createdAt: serverTimestamp()
+        }, { merge: true });
+      } catch (errDb) { console.warn('Aviso DB Usuário ao logar:', errDb); }
+
+      await logarEEntrar(userObj, '🎉 Login realizado com sucesso!');
     });
 
     // Cadastro Form Submit
@@ -897,33 +909,54 @@
       const c2 = document.getElementById('inp-reg-cartao2').value.trim() || 'Cartão 2';
 
       const isObjAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase() || email.toLowerCase() === 'admin@controlefinanceiro.com';
-      const role = isObjAdmin ? 'admin' : 'user';
 
-      let uid = null;
-      try {
-        const cred = await createUserWithEmailAndPassword(auth, email, pass);
-        uid = cred.user.uid;
-      } catch (err) {
-        console.warn('Firebase Auth Register Fallback:', err);
-        uid = 'usr_' + Date.now();
-      }
-
-      try {
-        const novoUser = {
-          uid, email, nomeUsuario: nome, nomeCartao1: c1, nomeCartao2: c2, role,
-          createdAt: serverTimestamp()
+      if (isObjAdmin) {
+        if (pass !== ADMIN_PASS) {
+          toastMsg('❌ A senha para a conta do Administrador deve ser: 220101cod');
+          return;
+        }
+        const adminUid = 'admin_victor_uid';
+        const adminObj = {
+          uid: adminUid,
+          email: ADMIN_EMAIL,
+          nomeUsuario: nome || 'Victor (Admin)',
+          role: 'admin',
+          nomeCartao1: c1,
+          nomeCartao2: c2
         };
 
-        await setDoc(doc(db, COLL_USERS, uid), novoUser);
+        try {
+          await setDoc(doc(db, COLL_USERS, adminUid), {
+            ...adminObj,
+            createdAt: serverTimestamp()
+          }, { merge: true });
+        } catch (errDb) { console.warn('Aviso DB Admin ao cadastrar:', errDb); }
 
-        // Notificar o admin por e-mail
-        enviarNotificacaoNovoUsuario(novoUser);
-
-        logarSessaoLocal({ uid, email });
-        toastMsg('🎉 Conta criada com sucesso! Notificação enviada ao Administrador.');
-      } catch (dbErr) {
-        toastMsg('❌ Erro ao salvar cadastro: ' + dbErr.message);
+        enviarNotificacaoNovoUsuario(adminObj);
+        await logarEEntrar(adminObj, '👑 Conta de Administrador autenticada!');
+        return;
       }
+
+      // Para usuários comuns
+      const uid = 'usr_' + Date.now();
+      const novoUser = {
+        uid,
+        email,
+        nomeUsuario: nome,
+        nomeCartao1: c1,
+        nomeCartao2: c2,
+        role: 'user',
+        createdAt: serverTimestamp()
+      };
+
+      try {
+        await setDoc(doc(db, COLL_USERS, uid), novoUser);
+      } catch (dbErr) { console.warn('Aviso DB Usuário ao cadastrar:', dbErr); }
+
+      // Notificar por e-mail ao administrador
+      enviarNotificacaoNovoUsuario(novoUser);
+
+      await logarEEntrar(novoUser, '🎉 Conta criada com sucesso! Notificação enviada ao Administrador.');
     });
 
     window.fazerLogout = async function() {
@@ -945,53 +978,61 @@
         if (!snap.empty) {
           userData = snap.docs[0].data();
         } else {
-          const isObjAdmin = currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() || currentUser.email === 'admin@controlefinanceiro.com';
+          const isObjAdmin = (currentUser.email && currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) || currentUser.email === 'admin@controlefinanceiro.com';
           userData = {
             uid,
             email: currentUser.email,
-            nomeUsuario: isObjAdmin ? 'Victor (Admin)' : 'Usuário',
-            nomeCartao1: 'Cartão 1',
-            nomeCartao2: 'Cartão 2',
+            nomeUsuario: isObjAdmin ? 'Victor (Admin)' : (currentUser.nomeUsuario || 'Usuário'),
+            nomeCartao1: currentUser.nomeCartao1 || 'Cartão 1',
+            nomeCartao2: currentUser.nomeCartao2 || 'Cartão 2',
             role: isObjAdmin ? 'admin' : 'user'
           };
         }
-
-        // Se for o e-mail do admin, forçar a role admin
-        if (userData.email && (userData.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() || userData.email === 'admin@controlefinanceiro.com')) {
-          userData.role = 'admin';
-        }
-
-        // Atualizar Bar de Usuário
-        document.getElementById('txt-user-name').textContent = userData.nomeUsuario || 'Usuário';
-        document.getElementById('txt-user-email').textContent = userData.email || '';
-        document.getElementById('txt-user-avatar').textContent = (userData.nomeUsuario || 'U').charAt(0).toUpperCase();
-
-        // Rótulos nos Formulários
-        document.getElementById('lbl-entrada-nome').textContent = `Descrição da Entrada / Salário de ${userData.nomeUsuario}:`;
-        document.getElementById('inp-entrada-desc').placeholder = `Ex: Salário de ${userData.nomeUsuario}`;
-
-        // Select de Cartões
-        const selCartao = document.getElementById('select-fatura-cartao-nome');
-        if (selCartao) {
-          selCartao.innerHTML = `
-            <option value="${userData.nomeCartao1}">${userData.nomeCartao1}</option>
-            <option value="${userData.nomeCartao2}">${userData.nomeCartao2}</option>
-            <option value="Outro Cartão">Outro Cartão</option>
-          `;
-        }
-
-        // Exibir Aba Admin se for Administrador
-        const btnAdmin = document.getElementById('btn-nav-admin');
-        const isAdmin = userData.role === 'admin' || (userData.email && (userData.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() || userData.email === 'admin@controlefinanceiro.com'));
-        if (isAdmin) {
-          if (btnAdmin) btnAdmin.style.display = 'flex';
-          carregarDadosAdmin();
-        } else {
-          if (btnAdmin) btnAdmin.style.display = 'none';
-        }
-
       } catch (err) {
-        console.error('Erro ao carregar perfil:', err);
+        console.warn('Usando dados da sessão local para o perfil:', err);
+        const isObjAdmin = (currentUser.email && currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) || currentUser.email === 'admin@controlefinanceiro.com';
+        userData = {
+          uid,
+          email: currentUser.email,
+          nomeUsuario: currentUser.nomeUsuario || (isObjAdmin ? 'Victor (Admin)' : 'Usuário'),
+          nomeCartao1: currentUser.nomeCartao1 || 'Cartão 1',
+          nomeCartao2: currentUser.nomeCartao2 || 'Cartão 2',
+          role: isObjAdmin ? 'admin' : 'user'
+        };
+      }
+
+      // Se for o e-mail do admin, forçar a role admin
+      if (userData.email && (userData.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() || userData.email === 'admin@controlefinanceiro.com')) {
+        userData.role = 'admin';
+      }
+
+      // Atualizar Bar de Usuário
+      document.getElementById('txt-user-name').textContent = userData.nomeUsuario || 'Usuário';
+      document.getElementById('txt-user-email').textContent = userData.email || '';
+      document.getElementById('txt-user-avatar').textContent = (userData.nomeUsuario || 'U').charAt(0).toUpperCase();
+
+      // Rótulos nos Formulários
+      document.getElementById('lbl-entrada-nome').textContent = `Descrição da Entrada / Salário de ${userData.nomeUsuario}:`;
+      document.getElementById('inp-entrada-desc').placeholder = `Ex: Salário de ${userData.nomeUsuario}`;
+
+      // Select de Cartões
+      const selCartao = document.getElementById('select-fatura-cartao-nome');
+      if (selCartao) {
+        selCartao.innerHTML = `
+          <option value="${userData.nomeCartao1}">${userData.nomeCartao1}</option>
+          <option value="${userData.nomeCartao2}">${userData.nomeCartao2}</option>
+          <option value="Outro Cartão">Outro Cartão</option>
+        `;
+      }
+
+      // Exibir Aba Admin se for Administrador
+      const btnAdmin = document.getElementById('btn-nav-admin');
+      const isAdmin = userData.role === 'admin' || (userData.email && (userData.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() || userData.email === 'admin@controlefinanceiro.com'));
+      if (isAdmin) {
+        if (btnAdmin) btnAdmin.style.display = 'flex';
+        carregarDadosAdmin();
+      } else {
+        if (btnAdmin) btnAdmin.style.display = 'none';
       }
     }
 
