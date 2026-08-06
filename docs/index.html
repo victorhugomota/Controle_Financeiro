@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controle Financeiro Pessoal</title>
+  
+  <!-- PDF.js CDN para leitura de PDFs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  
+  <!-- Estilos Globais -->
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.85);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --accent-green: #34d399;
+      --accent-purple: #c084fc;
+      --accent-rose: #fb7185;
+      --accent-amber: #fbbf24;
+      --accent-cyan: #22d3ee;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: rgba(255, 255, 255, 0.12);
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-family); }
+    body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; padding-bottom: 3rem; }
+
+    /* Modal Overlay & Cards */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center; z-index: 9999;
+      padding: 1rem;
+    }
+    .modal-card {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.99));
+      border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+      padding: 1.75rem; width: 100%; max-width: 520px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
+    .modal-title { font-size: 1.2rem; font-weight: 700; color: var(--primary); }
+
+    /* Header e Navegação Principal */
+    header {
+      background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100;
+      padding: 0.85rem 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;
+    }
+    .logo-box { display: flex; align-items: center; gap: 0.75rem; }
+    .logo-title { font-size: 1.25rem; font-weight: 800; background: linear-gradient(90deg, #38bdf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+    .nav-tabs { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.25rem; }
+    .nav-tab {
+      background: rgba(255, 255, 255, 0.05); border: 1px solid transparent; color: var(--text-muted);
+      padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.88rem; font-weight: 600;
+      transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 0.4rem;
+    }
+    .nav-tab:hover { background: rgba(255, 255, 255, 0.1); color: var(--text-main); }
+    .nav-tab.active { background: rgba(56, 189, 248, 0.15); border-color: var(--primary); color: var(--primary); }
+
+    .user-profile-bar { display: flex; align-items: center; gap: 0.75rem; }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #38bdf8, #a855f7); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; }
+
+    /* Layout da Aplicação */
+    main { max-width: 1200px; margin: 1.5rem auto; padding: 0 1rem; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Cards e Containers */
+    .card {
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.25rem;
+      backdrop-filter: blur(10px); box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .card-title { font-size: 1.05rem; font-weight: 700; color: var(--text-main); }
+    .card-subtext { font-size: 0.8rem; color: var(--text-muted); }
+
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+
+    .card-value { font-size: 1.75rem; font-weight: 800; margin: 0.3rem 0; }
+    .card-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; }
+    .card-icon.cyan { background: rgba(34, 211, 238, 0.15); color: #22d3ee; }
+    .card-icon.green { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+    .card-icon.purple { background: rgba(192, 132, 252, 0.15); color: #c084fc; }
+    .card-icon.rose { background: rgba(251, 113, 133, 0.15); color: #fb7185; }
+
+    /* Formulários */
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.83rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem; }
+    .form-control {
+      width: 100%; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border-color);
+      color: var(--text-main); padding: 0.65rem 0.85rem; border-radius: 8px; font-size: 0.9rem;
+      outline: none; transition: border-color 0.2s;
+    }
+    .form-control:focus { border-color: var(--primary); }
+    .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+
+    /* Botões */
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #38bdf8); color: #fff; border: none;
+      padding: 0.65rem 1.25rem; border-radius: 8px; font-weight: 600; cursor: pointer;
+      font-size: 0.88rem; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+    }
+    .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08); color: var(--text-main); border: 1px solid var(--border-color);
+      padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.82rem; transition: all 0.2s;
+    }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.15); }
+    .btn-danger {
+      background: rgba(251, 113, 133, 0.15); color: #fb7185; border: 1px solid rgba(251, 113, 133, 0.3);
+      padding: 0.4rem 0.75rem; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.78rem; transition: all 0.2s;
+    }
+    .btn-danger:hover { background: rgba(251, 113, 133, 0.3); }
+
+    /* Badges */
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.25rem 0.6rem;
+      border-radius: 6px; font-size: 0.75rem; font-weight: 700;
+    }
+    .badge.cyan { background: rgba(34, 211, 238, 0.15); color: #22d3ee; border: 1px solid rgba(34, 211, 238, 0.3); }
+    .badge.green { background: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); }
+    .badge.purple { background: rgba(192, 132, 252, 0.15); color: #c084fc; border: 1px solid rgba(192, 132, 252, 0.3); }
+    .badge.rose { background: rgba(251, 113, 133, 0.15); color: #fb7185; border: 1px solid rgba(251, 113, 133, 0.3); }
+    .badge.amber { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
+    .badge.gray { background: rgba(255, 255, 255, 0.1); color: var(--text-muted); }
+
+    /* Tabelas Personalizadas */
+    .table-responsive { overflow-x: auto; }
+    .custom-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.85rem; }
+    .custom-table th { background: rgba(15, 23, 42, 0.8); color: var(--text-muted); padding: 0.65rem 0.85rem; text-align: left; font-weight: 600; border-bottom: 1px solid var(--border-color); }
+    .custom-table td { padding: 0.75rem 0.85rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: var(--text-main); }
+    .custom-table td.num { text-align: right; }
+    .custom-table th.num { text-align: right; }
+
+    /* State Components */
+    .empty-state { padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
+    .chevron { transition: transform 0.2s; cursor: pointer; }
+    .chevron.open { transform: rotate(180deg); }
+
+    /* Toasts Notification */
+    #toast-box { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 10000; display: flex; flex-direction: column; gap: 0.5rem; }
+    .toast {
+      background: rgba(30, 41, 59, 0.95); border: 1px solid var(--primary); color: #fff;
+      padding: 0.75rem 1.25rem; border-radius: 8px; font-size: 0.88rem; font-weight: 600;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4); animation: slideIn 0.3s forwards;
+    }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  </style>
+  <script type="module" crossorigin src="./assets/index-CXJPsTnW.js"></script>
+</head>
+<body>
+
+  <!-- Toast Notification Box -->
+  <div id="toast-box"></div>
+
+  <!-- Modal de Autenticação (Login / Cadastro) -->
+  <div id="modal-auth" class="modal-overlay" style="display:none">
+    <div class="modal-card">
+      <div style="text-align:center; margin-bottom:1.25rem">
+        <h2 class="logo-title" style="font-size:1.6rem">💰 Controle Financeiro Pessoal</h2>
+        <p style="font-size:.84rem; color:var(--text-muted); margin-top:.3rem">Entre na sua conta ou crie um novo cadastro</p>
+      </div>
+
+      <div style="display:flex; gap:.5rem; margin-bottom:1.25rem; background:rgba(15,23,42,0.6); padding:.25rem; border-radius:8px">
+        <button id="btn-tab-login" type="button" class="btn-secondary" style="flex:1; background:rgba(56,189,248,0.2); border-color:var(--primary); color:var(--primary)" onclick="alternarAbaAuth('login')">🔐 Entrar</button>
+        <button id="btn-tab-register" type="button" class="btn-secondary" style="flex:1" onclick="alternarAbaAuth('register')">✨ Criar Conta</button>
+      </div>
+
+      <!-- Form Login -->
+      <form id="form-login">
+        <div class="form-group">
+          <label>E-mail de Acesso:</label>
+          <input type="email" id="inp-login-email" class="form-control" placeholder="seu@email.com" required>
+        </div>
+        <div class="form-group">
+          <label>Senha:</label>
+          <input type="password" id="inp-login-password" class="form-control" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn-primary" style="width:100%; padding:.8rem; margin-top:.5rem; font-size:.95rem">
+          🚀 Entrar no Sistema
+        </button>
+      </form>
+
+      <!-- Form Cadastro -->
+      <form id="form-register" style="display:none">
+        <div class="form-group">
+          <label>Seu Nome / Nome de Exibição:</label>
+          <input type="text" id="inp-reg-nome" class="form-control" placeholder="Ex: Victor" required>
+        </div>
+        <div class="form-group">
+          <label>E-mail:</label>
+          <input type="email" id="inp-reg-email" class="form-control" placeholder="seu@email.com" required>
+        </div>
+        <div class="form-group">
+          <label>Senha (mínimo 6 caracteres):</label>
+          <input type="password" id="inp-reg-password" class="form-control" placeholder="••••••••" required minlength="6">
+        </div>
+        
+        <div style="background:rgba(192,132,252,0.08); border:1px dashed rgba(192,132,252,0.3); padding:.75rem; border-radius:8px; margin-bottom:1rem">
+          <span style="font-size:.8rem; font-weight:700; color:#c084fc; display:block; margin-bottom:.5rem">💳 Personalização dos seus Cartões de Crédito:</span>
+          <div class="form-row">
+            <div class="form-group" style="margin:0">
+              <label>Nome do Cartão 1:</label>
+              <input type="text" id="inp-reg-cartao1" class="form-control" placeholder="Ex: Santander" value="Santander">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Nome do Cartão 2:</label>
+              <input type="text" id="inp-reg-cartao2" class="form-control" placeholder="Ex: Nubank" value="Nubank">
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary" style="width:100%; padding:.8rem; font-size:.95rem">
+          ✨ Concluir Cadastro &amp; Acessar
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Configurações / Perfil -->
+  <div id="modal-perfil" class="modal-overlay" style="display:none">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-title">⚙️ Configurações do seu Perfil</span>
+        <button class="btn-danger" style="padding:.2rem .5rem" onclick="fecharModalPerfil()">✕ Fechar</button>
+      </div>
+      <form id="form-atualizar-perfil">
+        <div class="form-group">
+          <label>Seu Nome de Exibição:</label>
+          <input type="text" id="inp-perf-nome" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Nome do seu Cartão 1:</label>
+          <input type="text" id="inp-perf-cartao1" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Nome do seu Cartão 2:</label>
+          <input type="text" id="inp-perf-cartao2" class="form-control" required>
+        </div>
+        <button type="submit" class="btn-primary" style="width:100%; padding:.75rem">
+          💾 Salvar Alterações
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Edição de Boleto Customizado -->
+  <div id="modal-editar-boleto" class="modal-overlay" style="display:none">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-title" id="title-modal-editar-boleto">✏️ Editar Boleto</span>
+        <button class="btn-danger" style="padding:.2rem .5rem" onclick="fecharModalEditarBoleto()">✕ Cancelar</button>
+      </div>
+      <form id="form-editar-boleto">
+        <input type="hidden" id="inp-edit-boleto-id">
+        <input type="hidden" id="inp-edit-boleto-type">
+        <input type="hidden" id="inp-edit-boleto-item-idx">
+
+        <div class="form-group">
+          <label id="lbl-edit-boleto-desc">Descrição / Nome do Boleto:</label>
+          <input type="text" id="inp-edit-boleto-desc" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Valor (R$):</label>
+          <input type="number" step="0.01" id="inp-edit-boleto-val" class="form-control" required>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:.5rem; margin-top:1.25rem">
+          <button type="button" class="btn-secondary" onclick="fecharModalEditarBoleto()">Cancelar</button>
+          <button type="submit" class="btn-primary">💾 Salvar Novo Valor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Inspecionar Usuário Admin -->
+  <div id="modal-inspecionar-usuario" class="modal-overlay" style="display:none">
+    <div class="modal-card" style="max-width:550px">
+      <div class="modal-header">
+        <span class="modal-title">👁️ Detalhes Cadastrais do Usuário</span>
+        <button class="btn-danger" style="padding:.2rem .5rem" onclick="fecharModalInspecionarUsuario()">✕ Fechar</button>
+      </div>
+      <div id="admin-user-details-content" style="margin-top:.5rem">
+        <!-- Conteúdo dinâmico preenchido via JS (apenas dados cadastrais) -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Editar Usuário Admin -->
+  <div id="modal-editar-usuario-admin" class="modal-overlay" style="display:none">
+    <div class="modal-card" style="max-width:550px">
+      <div class="modal-header">
+        <span class="modal-title">✏️ Editar Usuário (Painel Admin)</span>
+        <button class="btn-danger" style="padding:.2rem .5rem" onclick="fecharModalEditarUsuarioAdmin()">✕ Cancelar</button>
+      </div>
+      <form id="form-editar-usuario-admin">
+        <input type="hidden" id="admin-edit-user-uid">
+        
+        <div class="form-group">
+          <label>Nome do Usuário:</label>
+          <input type="text" id="admin-edit-user-nome" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>E-mail:</label>
+          <input type="email" id="admin-edit-user-email" class="form-control" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nome do Cartão 1:</label>
+            <input type="text" id="admin-edit-user-cartao1" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label>Nome do Cartão 2:</label>
+            <input type="text" id="admin-edit-user-cartao2" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Status de Permissão:</label>
+            <select id="admin-edit-user-status" class="form-control">
+              <option value="ativo">✅ Ativo (Aprovado)</option>
+              <option value="pendente">⏳ Pendente (Aguardando Aprovação)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Perfil de Acesso:</label>
+            <select id="admin-edit-user-role" class="form-control">
+              <option value="user">👤 Usuário Comum</option>
+              <option value="admin">👑 Administrador</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.25rem">
+          <button type="button" class="btn-danger" onclick="excluirUsuarioAdminConfirmado()">🗑️ Excluir Usuário</button>
+          <div style="display:flex; gap:.5rem">
+            <button type="button" class="btn-secondary" onclick="fecharModalEditarUsuarioAdmin()">Cancelar</button>
+            <button type="submit" class="btn-primary">💾 Salvar Alterações</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Top Header Navegação -->
+  <header>
+    <div class="logo-box">
+      <div class="logo-title">💰 Controle Financeiro</div>
+    </div>
+
+    <div class="nav-tabs">
+      <button class="nav-tab active" data-tab="tab-dashboard">📊 Visão Geral</button>
+      <button class="nav-tab" data-tab="tab-controle-mensal">🗓️ Controle Mensal</button>
+      <button class="nav-tab" data-tab="tab-salarios">💵 Salários &amp; Entradas</button>
+      <button class="nav-tab" data-tab="tab-cartoes">💳 Cartões de Crédito</button>
+      <button class="nav-tab" data-tab="tab-boletos">📄 Boletos &amp; Contas</button>
+      <button id="btn-nav-admin" class="nav-tab" data-tab="tab-admin" style="display:none; color:#fbbf24; border-color:rgba(251,191,36,0.3)">👑 Painel Admin</button>
+    </div>
+
+    <div class="user-profile-bar" id="user-profile-bar" style="display:none">
+      <div class="user-avatar" id="txt-user-avatar">U</div>
+      <div>
+        <div style="font-size:.85rem; font-weight:700; color:#fff" id="txt-user-name">Usuário</div>
+        <div style="font-size:.72rem; color:var(--text-muted)" id="txt-user-email">email@exemplo.com</div>
+      </div>
+      <button class="btn-secondary" style="padding:.35rem .65rem; font-size:.78rem; margin-left:.4rem" onclick="abrirModalPerfil()" title="Configurações do Perfil">⚙️ Perfil</button>
+      <button class="btn-danger" style="padding:.35rem .65rem; font-size:.78rem" onclick="fazerLogout()" title="Sair da Conta">🚪 Sair</button>
+    </div>
+  </header>
+
+  <!-- Conteúdo Principal -->
+  <main>
+
+    <!-- ═════════════════════════════════════════════════════════════════════════ -->
+    <!-- 1. ABA VISÃO GERAL (DASHBOARD) -->
+    <!-- ═════════════════════════════════════════════════════════════════════════ -->
+    <section id="tab-dashboard" class="tab-content active">
+      
+      <!-- Linha 3 Cards Principais de Reserva / Metas -->
+      <div class="grid-3">
+        <div class="card" style="border-color:#38bdf8; background:linear-gradient(135deg,rgba(30,41,59,.9),rgba(15,23,42,.95))">
+          <div class="card-header">
+            <span class="card-title" style="color:#38bdf8">Meta Mensal Necessária</span>
+            <div class="card-icon cyan">🎯</div>
+          </div>
+          <div class="card-value" id="val-meta-reserva" style="color:#38bdf8">R$ 0,00</div>
+          <div class="card-subtext" id="subtext-meta-reserva">Calculada automaticamente pelo sistema</div>
+        </div>
+
+        <div class="card" style="border-color:#34d399; background:linear-gradient(135deg,rgba(30,41,59,.9),rgba(15,23,42,.95))">
+          <div class="card-header">
+            <span class="card-title" style="color:#34d399">Valor Real Guardado</span>
+            <div class="card-icon green">🏦</div>
+          </div>
+          <div class="card-value" id="val-real-guardado" style="color:#34d399">R$ 0,00</div>
+          <div class="card-subtext">Poupança e Investimentos acumulados</div>
+        </div>
+
+        <div class="card" style="border-color:#a855f7; background:linear-gradient(135deg,rgba(30,41,59,.9),rgba(15,23,42,.95))">
+          <div class="card-header">
+            <span class="card-title" style="color:#c084fc">Projeção Anual do Sistema</span>
+            <div class="card-icon purple">💡</div>
+          </div>
+          <div class="card-value" id="val-recomendacao-reserva" style="color:#c084fc">R$ 0,00</div>
+          <div class="card-subtext" id="subtext-recomendacao">Previsão baseada no histórico de entradas e saídas</div>
+        </div>
+      </div>
+
+      <!-- Card de Diagnóstico Inteligente de Economias -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header">
+          <span class="card-title">💡 Análise &amp; Recomendação de Reservas</span>
+          <span class="badge purple">Inteligência Financeira</span>
+        </div>
+        <div id="box-analise-reserva-detalhes"></div>
+      </div>
+
+      <!-- Diagnóstico Geral Mês a Mês -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📊 Análise de Desempenho Mês a Mês</span>
+        </div>
+        <div id="container-analise-mensal-lista"></div>
+      </div>
+
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════════════ -->
+    <!-- 2. ABA CONTROLE MENSAL -->
+    <!-- ═════════════════════════════════════════════════════════════════════════ -->
+    <section id="tab-controle-mensal" class="tab-content">
+      <div class="card">
+        <div class="card-header" style="flex-wrap:wrap; gap:1rem">
+          <div>
+            <span class="card-title">🗓️ Visão Financeira por Mês de Referência</span>
+            <p class="card-subtext">Selecione um mês para ver a soma de salários, faturas e boletos daquele período</p>
+          </div>
+          <div style="display:flex; align-items:center; gap:.5rem">
+            <label style="font-size:.85rem; font-weight:600; color:var(--text-muted)">Mês:</label>
+            <select id="select-mes-controle" class="form-control" style="width:180px" onchange="renderControleMensal()"></select>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top:1rem">
+          <div class="card" style="background:rgba(15,23,42,0.6)">
+            <span style="font-size:.8rem; color:var(--text-muted)">Entradas do Mês</span>
+            <div class="card-value" id="cm-val-entradas" style="color:#34d399">R$ 0,00</div>
+          </div>
+          <div class="card" style="background:rgba(15,23,42,0.6)">
+            <span style="font-size:.8rem; color:var(--text-muted)">Total de Saídas</span>
+            <div class="card-value" id="cm-val-saidas" style="color:#fb7185">R$ 0,00</div>
+          </div>
+          <div class="card" style="background:rgba(15,23,42,0.6)">
+            <span style="font-size:.8rem; color:var(--text-muted)">Saldo Líquido</span>
+            <div class="card-value" id="cm-val-saldo" style="color:#38bdf8">R$ 0,00</div>
+          </div>
+        </div>
+
+        <div id="container-detalhes-controle-mensal" style="margin-top:1rem"></div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════════════ -->
+    <!-- 3. ABA SALÁRIOS & ENTRADAS -->
+    <!-- ═════════════════════════════════════════════════════════════════════════ -->
+    <section id="tab-salarios" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">💵 Registrar Nova Entrada / Salário</span>
+        </div>
+        <form id="form-adicionar-entrada">
+          <div class="form-row">
+            <div class="form-group">
+              <label id="lbl-entrada-nome">Descrição / Origem da Entrada:</label>
+              <input type="text" id="inp-entrada-desc" class="form-control" placeholder="Ex: Salário Mensal" required>
+            </div>
+            <div class="form-group">
+              <label>Valor (R$):</label>
+              <input type="number" step="0.01" id="inp-entrada-valor" class="form-control" placeholder="0.00" required>
+            </div>
+            <div class="form-group">
+              <label>Mês de Referência:</label>
+              <input type="month" id="inp-entrada-mes" class="form-control" required>
+            </div>
+          </div>
+          <button type="submit" class="btn-primary" style="width:100%; padding:.75rem">
+            ➕ Salvar Entrada
+          </button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📋 Entradas &amp; Salários Cadastrados</span>
+          <span class="badge green" id="badge-total-entradas">R$ 0,00 total</span>
+        </div>
+        <div id="lista-entradas-registradas"></div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════════════ -->
+    <!-- 4. ABA CARTÕES DE CRÉDITO -->
+    <!-- ═════════════════════════════════════════════════════════════════════════ -->
+    <section id="tab-cartoes" class="tab-content">
+      
+      <!-- Card Importar Fatura PDF / Arquivo / Texto -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header">
+          <span class="card-title">💳 Importar Fatura de Cartão de Crédito</span>
+          <span class="badge rose">📑 PDF / Arquivo / Extrato</span>
+        </div>
+        <p class="card-subtext" style="margin-bottom:1.25rem">
+          Selecione o cartão de crédito, informe a data de vencimento da fatura e envie o arquivo (.pdf, .csv, .txt) ou cole o extrato.
+        </p>
+
+        <div style="margin-bottom:1.25rem">
+          <label style="display:block; font-size:.84rem; font-weight:600; margin-bottom:.5rem; color:var(--text-muted)">1. Selecione o Cartão de Crédito:</label>
+          <div id="container-botoes-cartao-fatura" style="display:flex; gap:1rem; flex-wrap:wrap">
+            <!-- Gerado dinamicamente com botões dos cartões do usuário -->
+          </div>
+          <input type="hidden" id="select-fatura-cartao-nome">
+        </div>
+
+        <div class="form-row" style="margin-bottom:1.25rem">
+          <div class="form-group" style="margin-bottom:0">
+            <label for="inp-fatura-vencimento">2. Data de Vencimento da Fatura:</label>
+            <input type="date" id="inp-fatura-vencimento" class="form-control" onchange="atualizarMesRefFatura()">
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label style="display:block; font-size:.84rem; font-weight:600; margin-bottom:.4rem; color:var(--text-muted)">Mês de Referência:</label>
+            <div id="lbl-fatura-mes-ref" style="font-weight:700; color:var(--primary); padding:.65rem .85rem; background:rgba(15,23,42,0.8); border:1px solid var(--border-color); border-radius:8px; font-size:.9rem">
+              Mês da Fatura
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:1.25rem">
+          <label style="display:block; font-size:.84rem; font-weight:600; margin-bottom:.5rem; color:var(--text-muted)">3. Selecionar Arquivo da Fatura (.pdf, .csv, .txt):</label>
+          <div style="border:2px dashed var(--border-color); padding:1.5rem; text-align:center; border-radius:12px; background:rgba(15,23,42,.5); cursor:pointer; transition:border-color .2s" onclick="document.getElementById('file-fatura-pdf').click()">
+            <input type="file" id="file-fatura-pdf" accept=".pdf,.csv,.txt" style="display:none" onchange="handleFileFaturaSelect(event)">
+            <div style="font-size:1.8rem; margin-bottom:.4rem">📁</div>
+            <div style="font-weight:700; font-size:1rem; color:var(--text-main)" id="txt-file-fatura">Clique para Selecionar o Arquivo da Fatura</div>
+            <div style="font-size:.78rem; color:var(--text-muted); margin-top:.25rem">Suporta PDF, CSV e TXT de extratos bancários</div>
+          </div>
+        </div>
+
+        <button type="button" class="btn-primary" onclick="importarFaturaManualOuArquivo()" style="width:100%; padding:.8rem">
+          🔍 Ler &amp; Processar Itens da Fatura
+        </button>
+
+        <!-- Preview da Fatura Importada -->
+        <div id="box-revisao-fatura" style="display:none; margin-top:1.5rem; border-top:1px solid var(--border-color); padding-top:1.25rem">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
+            <span class="card-title" style="color:var(--primary)">📝 Lançamentos da Fatura Identificados</span>
+            <span class="badge purple" id="badge-total-preview-fatura" style="font-size:.9rem">R$ 0,00</span>
+          </div>
+
+          <div id="lista-preview-fatura-itens" style="max-height:240px; overflow-y:auto; background:rgba(15,23,42,.6); padding:.75rem; border-radius:12px; border:1px solid var(--border-color); margin-bottom:1.25rem"></div>
+
+          <button type="button" class="btn-primary" onclick="confirmarEGravarFaturaDocumento()" style="width:100%; padding:.85rem">
+            ✨ Salvar Fatura no Sistema
+          </button>
+        </div>
+      </div>
+
+      <!-- Lista de Faturas Registradas -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Faturas Cadastradas</span>
+          <span class="badge rose" id="badge-total-cartoes">R$ 0,00 total</span>
+        </div>
+        <div id="lista-faturas-registradas"></div>
+      </div>
+
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════════════ -->
+    <!-- 5. ABA BOLETOS & CONTAS -->
+    <!-- ═════════════════════════════════════════════════════════════════════════ -->
+    <section id="tab-boletos" class="tab-content">
+      
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📄 Importar Boleto / Conta em PDF</span>
+        </div>
+
+        <div class="form-group">
+          <label>Data de Vencimento do Boleto:</label>
+          <input type="date" id="inp-boleto-vencimento" class="form-control" onchange="atualizarMesRefBoleto()">
+          <span id="lbl-boleto-mes-ref" class="card-subtext" style="margin-top:.3rem; display:block"></span>
+        </div>
+
+        <div style="border:2px dashed var(--border-color); padding:1.5rem; text-align:center; border-radius:12px; margin-bottom:1rem; cursor:pointer" onclick="document.getElementById('file-boleto-pdf').click()">
+          <input type="file" id="file-boleto-pdf" accept=".pdf,.txt" style="display:none" onchange="handleFileBoletoSelect(event)">
+          <div style="font-size:1.5rem; margin-bottom:.4rem">📁</div>
+          <div style="font-weight:700; font-size:1rem" id="txt-file-boleto">Clique para Selecionar o Arquivo do Boleto</div>
+        </div>
+
+        <details style="margin-bottom:1rem">
+          <summary style="font-size:.84rem; font-weight:600; color:var(--text-muted); cursor:pointer; padding:.4rem 0">Ou cole o texto do boleto / linha digitável (opcional)</summary>
+          <div class="form-group" style="margin-top:.5rem">
+            <textarea id="inp-boleto-txt" class="form-control" rows="4" placeholder="Cole aqui o texto do boleto..."></textarea>
+          </div>
+        </details>
+
+        <button type="button" class="btn-primary" onclick="importarBoletoManualOuArquivo()" style="width:100%">
+          🔍 Ler &amp; Processar Boleto
+        </button>
+
+        <!-- Preview do Boleto Importado -->
+        <div id="box-revisao-boleto" style="display:none; margin-top:1.5rem; border-top:1px solid var(--border-color); padding-top:1.25rem">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
+            <span class="card-title" style="color:var(--primary)">📝 Boleto Identificado</span>
+            <span class="badge purple" id="badge-total-preview-boleto" style="font-size:.9rem">R$ 0,00</span>
+          </div>
+
+          <div class="form-row" style="margin-bottom:1rem">
+            <div class="form-group">
+              <label>Descrição / Beneficiário:</label>
+              <input type="text" id="inp-revisao-boleto-desc" class="form-control" placeholder="Ex: Conta de Luz CPFL">
+            </div>
+            <div class="form-group">
+              <label>Valor do Boleto (R$):</label>
+              <input type="number" step="0.01" id="inp-revisao-boleto-val" class="form-control" placeholder="0.00" onchange="atualizarValorTotalRevisaoBoleto()">
+            </div>
+          </div>
+
+          <div id="lista-preview-boleto-itens" style="max-height:220px; overflow-y:auto; background:rgba(15,23,42,.6); padding:.75rem; border-radius:12px; border:1px solid var(--border-color); margin-bottom:1.25rem"></div>
+
+          <button type="button" class="btn-primary" onclick="confirmarEGravarBoletoDocumento()" style="width:100%; padding:.85rem">
+            ✨ Salvar Boleto no Sistema
+          </button>
+        </div>
+      </div>
+
+      <!-- Container de Análise de Boletos Recorrentes -->
+      <div id="container-analise-boletos-recorrentes"></div>
+
+      <!-- Lista de Boletos Registrados -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Boletos &amp; Contas Cadastradas</span>
+          <span class="badge purple" id="badge-total-boletos">R$ 0,00 total</span>
+        </div>
+        <div id="lista-boletos-registrados"></div>
+      </div>
+
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════════════ -->
+    <!-- 6. ABA PAINEL ADMIN (VISÍVEL APENAS PARA ADMINISTRADORES) -->
+    <!-- ═════════════════════════════════════════════════════════════════════════ -->
+    <section id="tab-admin" class="tab-content">
+      <div class="card" style="border-color:#fbbf24; background:linear-gradient(135deg,rgba(30,41,59,.98),rgba(15,23,42,.99))">
+        <div class="card-header">
+          <span class="card-title" style="color:#fbbf24; font-size:1.15rem">👑 Painel Administrativo de Gestão de Usuários</span>
+          <span class="badge amber">Exclusivo Admin</span>
+        </div>
+        <p class="card-subtext" style="margin-bottom:1rem">Visualização global dos usuários cadastrados no aplicativo</p>
+
+        <div class="grid-3" style="margin-bottom:1.25rem">
+          <div class="card" style="background:rgba(15,23,42,0.7)">
+            <span style="font-size:.8rem; color:var(--text-muted)">Total de Usuários</span>
+            <div class="card-value" id="admin-kpi-users" style="color:#fbbf24">0</div>
+          </div>
+          <div class="card" style="background:rgba(15,23,42,0.7)">
+            <span style="font-size:.8rem; color:var(--text-muted)">Usuários Ativos (Aprovados)</span>
+            <div class="card-value" id="admin-kpi-ativos" style="color:#34d399">0</div>
+          </div>
+          <div class="card" style="background:rgba(15,23,42,0.7)">
+            <span style="font-size:.8rem; color:var(--text-muted)">Aguardando Aprovação</span>
+            <div class="card-value" id="admin-kpi-pendentes" style="color:#fb7185">0</div>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Usuário</th>
+                <th>E-mail</th>
+                <th>Cartões Configurados</th>
+                <th>Status</th>
+                <th>Perfil</th>
+                <th class="num">Ações do Administrador</th>
+              </tr>
+            </thead>
+            <tbody id="admin-lista-usuarios">
+              <!-- Preenchido dinamicamente pelo JS do Admin -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Script Lógica da Aplicação -->
+</body>
+</html>
