@@ -1464,7 +1464,7 @@
     // ═════════════════════════════════════════════════════════════════════════
     // 2. LÓGICA DA ABA CONTROLE MENSAL
     // ═════════════════════════════════════════════════════════════════════════
-    window.renderControleMensal = function() {
+    function renderControleMensal() {
       const select = document.getElementById('select-mes-controle');
       if (!select) return;
 
@@ -1542,7 +1542,8 @@
           </div>
         </div>
       `;
-    };
+    }
+    window.renderControleMensal = renderControleMensal;
 
     // ═════════════════════════════════════════════════════════════════════════
     // 3. LÓGICA DA ABA SALÁRIOS & ENTRADAS
@@ -2127,7 +2128,7 @@
       }
     }
 
-    window.aprovarUsuarioAdmin = async function(uid) {
+    async function aprovarUsuarioAdmin(uid) {
       if (!uid) return;
       try {
         await setDoc(doc(db, COLL_USERS, uid), { status: 'ativo' }, { merge: true });
@@ -2136,9 +2137,10 @@
       } catch (err) {
         toastMsg('❌ Erro ao aprovar usuário: ' + err.message);
       }
-    };
+    }
+    window.aprovarUsuarioAdmin = aprovarUsuarioAdmin;
 
-    window.abrirModalEditarUsuarioAdmin = async function(uid) {
+    async function abrirModalEditarUsuarioAdmin(uid) {
       if (!uid) return;
       try {
         let u = null;
@@ -2163,11 +2165,13 @@
       } catch (err) {
         toastMsg('Erro ao abrir edição do usuário: ' + err.message);
       }
-    };
+    }
+    window.abrirModalEditarUsuarioAdmin = abrirModalEditarUsuarioAdmin;
 
-    window.fecharModalEditarUsuarioAdmin = function() {
+    function fecharModalEditarUsuarioAdmin() {
       document.getElementById('modal-editar-usuario-admin').style.display = 'none';
-    };
+    }
+    window.fecharModalEditarUsuarioAdmin = fecharModalEditarUsuarioAdmin;
 
     const fEditAdmin = document.getElementById('form-editar-usuario-admin');
     if (fEditAdmin) {
@@ -2201,7 +2205,7 @@
       });
     }
 
-    window.excluirUsuarioAdminDirect = async function(uid, nome) {
+    async function excluirUsuarioAdminDirect(uid, nome) {
       if (!confirm(`Deseja realmente excluir permanentemente o cadastro do usuário "${nome}"?`)) return;
       try {
         await deleteDoc(doc(db, COLL_USERS, uid));
@@ -2210,17 +2214,19 @@
       } catch (err) {
         toastMsg('❌ Erro ao excluir usuário: ' + err.message);
       }
-    };
+    }
+    window.excluirUsuarioAdminDirect = excluirUsuarioAdminDirect;
 
-    window.excluirUsuarioAdminConfirmado = async function() {
+    async function excluirUsuarioAdminConfirmado() {
       const uid = document.getElementById('admin-edit-user-uid').value;
       const nome = document.getElementById('admin-edit-user-nome').value;
       if (!uid) return;
       await excluirUsuarioAdminDirect(uid, nome);
       fecharModalEditarUsuarioAdmin();
-    };
+    }
+    window.excluirUsuarioAdminConfirmado = excluirUsuarioAdminConfirmado;
 
-    window.inspecionarUsuarioAdmin = async function(uid) {
+    async function inspecionarUsuarioAdmin(uid) {
       if (!uid) return;
       try {
         let u = null;
@@ -2271,11 +2277,13 @@
       } catch (err) {
         toastMsg('❌ Erro ao exibir detalhes do usuário: ' + err.message);
       }
-    };
+    }
+    window.inspecionarUsuarioAdmin = inspecionarUsuarioAdmin;
 
-    window.fecharModalInspecionarUsuario = function() {
+    function fecharModalInspecionarUsuario() {
       document.getElementById('modal-inspecionar-usuario').style.display = 'none';
-    };
+    }
+    window.fecharModalInspecionarUsuario = fecharModalInspecionarUsuario;
 
   </script>
 </body>
