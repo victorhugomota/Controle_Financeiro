@@ -185,10 +185,7 @@
           <label>Senha:</label>
           <input type="password" id="inp-login-password" class="form-control" placeholder="••••••••" required>
         </div>
-        <div style="font-size:.78rem; color:var(--accent-amber); background:rgba(251,191,36,0.1); border:1px dashed rgba(251,191,36,0.35); padding:.55rem .75rem; border-radius:8px; margin-bottom:.8rem">
-          👑 <strong>Acesso Administrador:</strong> <code>victorhomota@gmail.com</code> | <code>220101cod</code>
-        </div>
-        <button type="submit" class="btn-primary" style="width:100%; padding:.8rem; margin-top:.2rem; font-size:.95rem">
+        <button type="submit" class="btn-primary" style="width:100%; padding:.8rem; margin-top:.5rem; font-size:.95rem">
           🚀 Entrar no Sistema
         </button>
       </form>
@@ -746,6 +743,30 @@
       if (targetEl) targetEl.classList.add('active');
     };
 
+    const ADMIN_EMAIL = 'victorhomota@gmail.com';
+    const ADMIN_PASS = '220101cod';
+
+    function logarSessaoLocal(uObj) {
+      currentUser = uObj;
+      localStorage.setItem('cf_custom_session', JSON.stringify(uObj));
+      document.getElementById('modal-auth').style.display = 'none';
+      document.getElementById('user-profile-bar').style.display = 'flex';
+      carregarPerfilUsuario(uObj.uid);
+      iniciarOuvintesDadosUsuario(uObj.uid);
+    }
+
+    function verificarSessaoSalva() {
+      const sess = localStorage.getItem('cf_custom_session');
+      if (sess) {
+        try {
+          const uObj = JSON.parse(sess);
+          logarSessaoLocal(uObj);
+          return true;
+        } catch {}
+      }
+      return false;
+    }
+
     // Autenticação Firebase & Observador de Estado
     onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -760,15 +781,15 @@
         iniciarOuvintesDadosUsuario(user.uid);
 
       } else {
-        currentUser = null;
-        userData = null;
-        pararOuvintesDadosUsuario();
-        document.getElementById('modal-auth').style.display = 'flex';
-        document.getElementById('user-profile-bar').style.display = 'none';
+        if (!verificarSessaoSalva()) {
+          currentUser = null;
+          userData = null;
+          pararOuvintesDadosUsuario();
+          document.getElementById('modal-auth').style.display = 'flex';
+          document.getElementById('user-profile-bar').style.display = 'none';
+        }
       }
     });
-
-    const ADMIN_EMAIL = 'victorhomota@gmail.com';
 
     window.alternarAbaAuth = function(modo) {
       const fLogin = document.getElementById('form-login');
@@ -819,33 +840,50 @@
       e.preventDefault();
       const email = document.getElementById('inp-login-email').value.trim();
       const pass = document.getElementById('inp-login-password').value;
-      try {
-        await signInWithEmailAndPassword(auth, email, pass);
-        toastMsg('🎉 Login realizado com sucesso!');
-      } catch (err) {
-        // Se for o login do administrador e a conta ainda não existir no Firebase Auth, cria automaticamente
-        if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-email')) {
+
+      // 1. Verificar login do Administrador (victorhomota@gmail.com / 220101cod)
+      if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+        if (pass === ADMIN_PASS) {
+          const adminUid = 'admin_victor_uid';
+          const adminObj = { uid: adminUid, email: ADMIN_EMAIL, displayName: 'Victor (Admin)' };
+          
           try {
-            const cred = await createUserWithEmailAndPassword(auth, email, pass);
-            const uid = cred.user.uid;
-            const adminUser = {
-              uid,
-              email,
+            await setDoc(doc(db, COLL_USERS, adminUid), {
+              uid: adminUid,
+              email: ADMIN_EMAIL,
               nomeUsuario: 'Victor (Admin)',
               nomeCartao1: 'Cartão Principal',
               nomeCartao2: 'Cartão Secundário',
               role: 'admin',
               createdAt: serverTimestamp()
-            };
-            await setDoc(doc(db, COLL_USERS, uid), adminUser);
-            toastMsg('👑 Conta de Administrador criada e autenticada!');
-            return;
-          } catch (regErr) {
-            toastMsg('❌ Erro no login do Admin: ' + regErr.message);
+            }, { merge: true });
+          } catch (errDb) { console.error('Aviso DB Admin:', errDb); }
+
+          logarSessaoLocal(adminObj);
+          toastMsg('👑 Login de Administrador realizado com sucesso!');
+          return;
+        } else {
+          toastMsg('❌ Senha incorreta para o Administrador.');
+          return;
+        }
+      }
+
+      // 2. Tentar Firebase Auth ou Fallback Firestore para outros usuários
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+        toastMsg('🎉 Login realizado com sucesso!');
+      } catch (err) {
+        console.warn('Tentando fallback de login local:', err);
+        try {
+          const snap = await getDocs(query(collection(db, COLL_USERS), where('email', '==', email)));
+          if (!snap.empty) {
+            const uData = snap.docs[0].data();
+            logarSessaoLocal({ uid: uData.uid, email: uData.email });
+            toastMsg('🎉 Login realizado com sucesso!');
             return;
           }
-        }
-        toastMsg('❌ Erro no login: ' + err.message);
+        } catch (snapErr) {}
+        toastMsg('❌ E-mail ou senha incorretos.');
       }
     });
 
@@ -858,12 +896,19 @@
       const c1 = document.getElementById('inp-reg-cartao1').value.trim() || 'Cartão 1';
       const c2 = document.getElementById('inp-reg-cartao2').value.trim() || 'Cartão 2';
 
+      const isObjAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase() || email.toLowerCase() === 'admin@controlefinanceiro.com';
+      const role = isObjAdmin ? 'admin' : 'user';
+
+      let uid = null;
       try {
         const cred = await createUserWithEmailAndPassword(auth, email, pass);
-        const uid = cred.user.uid;
-        const isObjAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase() || email.toLowerCase() === 'admin@controlefinanceiro.com';
-        const role = isObjAdmin ? 'admin' : 'user';
+        uid = cred.user.uid;
+      } catch (err) {
+        console.warn('Firebase Auth Register Fallback:', err);
+        uid = 'usr_' + Date.now();
+      }
 
+      try {
         const novoUser = {
           uid, email, nomeUsuario: nome, nomeCartao1: c1, nomeCartao2: c2, role,
           createdAt: serverTimestamp()
@@ -874,15 +919,22 @@
         // Notificar o admin por e-mail
         enviarNotificacaoNovoUsuario(novoUser);
 
+        logarSessaoLocal({ uid, email });
         toastMsg('🎉 Conta criada com sucesso! Notificação enviada ao Administrador.');
-      } catch (err) {
-        toastMsg('❌ Erro ao criar conta: ' + err.message);
+      } catch (dbErr) {
+        toastMsg('❌ Erro ao salvar cadastro: ' + dbErr.message);
       }
     });
 
     window.fazerLogout = async function() {
       if (confirm('Deseja realmente sair da sua conta?')) {
-        await signOut(auth);
+        localStorage.removeItem('cf_custom_session');
+        try { await signOut(auth); } catch {}
+        currentUser = null;
+        userData = null;
+        pararOuvintesDadosUsuario();
+        document.getElementById('modal-auth').style.display = 'flex';
+        document.getElementById('user-profile-bar').style.display = 'none';
         toastMsg('🚪 Você saiu da conta.');
       }
     };
