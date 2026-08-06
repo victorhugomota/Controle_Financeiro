@@ -899,24 +899,98 @@
       }
     }
 
-    // Login Form Submit
-    document.getElementById('form-login').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('inp-login-email').value.trim();
-      const pass = document.getElementById('inp-login-password').value;
+    const fLogin = document.getElementById('form-login');
+    if (fLogin) {
+      fLogin.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('inp-login-email').value.trim();
+        const pass = document.getElementById('inp-login-password').value;
 
-      // 1. Verificar login do Administrador (victorhomota@gmail.com / 220101cod)
-      if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-        if (pass === ADMIN_PASS) {
+        // 1. Verificar login do Administrador (victorhomota@gmail.com / 220101cod)
+        if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+          if (pass === ADMIN_PASS) {
+            const adminUid = 'admin_victor_uid';
+            const adminObj = {
+              uid: adminUid,
+              email: ADMIN_EMAIL,
+              nomeUsuario: 'Victor (Admin)',
+              role: 'admin',
+              status: 'ativo',
+              nomeCartao1: 'Cartão Principal',
+              nomeCartao2: 'Cartão Secundário'
+            };
+
+            try {
+              await setDoc(doc(db, COLL_USERS, adminUid), {
+                ...adminObj,
+                createdAt: serverTimestamp()
+              }, { merge: true });
+            } catch (errDb) { console.warn('Aviso DB Admin ao logar:', errDb); }
+
+            await logarEEntrar(adminObj, '👑 Login de Administrador realizado com sucesso!');
+            return;
+          } else {
+            toastMsg('❌ Senha incorreta para o Administrador.');
+            return;
+          }
+        }
+
+        // 2. Para outros usuários: verificar se a conta foi aprovada pelo ADM
+        let uData = null;
+        try {
+          const snap = await getDocs(query(collection(db, COLL_USERS), where('email', '==', email)));
+          if (!snap.empty) {
+            uData = snap.docs[0].data();
+          }
+        } catch (errSnap) { console.warn('Aviso ao consultar cadastro no Firestore:', errSnap); }
+
+        if (!uData) {
+          uData = {
+            uid: 'user_' + String(email).replace(/[^a-zA-Z0-9]/g, '_'),
+            email: email,
+            nomeUsuario: email.split('@')[0],
+            role: 'user',
+            status: 'pendente'
+          };
+        }
+
+        // Verificar permissão do status de aprovação
+        if (uData.status === 'pendente' && uData.role !== 'admin' && uData.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+          toastMsg('⏳ Sua conta está aguardando aprovação pelo Administrador. Você poderá acessar assim que o cadastro for aprovado!');
+          return;
+        }
+
+        await logarEEntrar(uData, '🎉 Login realizado com sucesso!');
+      });
+    }
+
+    // Cadastro Form Submit
+    const fRegister = document.getElementById('form-register');
+    if (fRegister) {
+      fRegister.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const nome = document.getElementById('inp-reg-nome').value.trim();
+        const email = document.getElementById('inp-reg-email').value.trim();
+        const pass = document.getElementById('inp-reg-password').value;
+        const c1 = document.getElementById('inp-reg-cartao1').value.trim() || 'Cartão 1';
+        const c2 = document.getElementById('inp-reg-cartao2').value.trim() || 'Cartão 2';
+
+        const isObjAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase() || email.toLowerCase() === 'admin@controlefinanceiro.com';
+
+        if (isObjAdmin) {
+          if (pass !== ADMIN_PASS) {
+            toastMsg('❌ A senha para a conta do Administrador deve ser: 220101cod');
+            return;
+          }
           const adminUid = 'admin_victor_uid';
           const adminObj = {
             uid: adminUid,
             email: ADMIN_EMAIL,
-            nomeUsuario: 'Victor (Admin)',
+            nomeUsuario: nome || 'Victor (Admin)',
             role: 'admin',
             status: 'ativo',
-            nomeCartao1: 'Cartão Principal',
-            nomeCartao2: 'Cartão Secundário'
+            nomeCartao1: c1,
+            nomeCartao2: c2
           };
 
           try {
@@ -924,105 +998,36 @@
               ...adminObj,
               createdAt: serverTimestamp()
             }, { merge: true });
-          } catch (errDb) { console.warn('Aviso DB Admin ao logar:', errDb); }
+          } catch (errDb) { console.warn('Aviso DB Admin ao cadastrar:', errDb); }
 
-          await logarEEntrar(adminObj, '👑 Login de Administrador realizado com sucesso!');
-          return;
-        } else {
-          toastMsg('❌ Senha incorreta para o Administrador.');
+          enviarNotificacaoNovoUsuario(adminObj);
+          await logarEEntrar(adminObj, '👑 Conta de Administrador autenticada!');
           return;
         }
-      }
 
-      // 2. Para outros usuários: verificar se a conta foi aprovada pelo ADM
-      let uData = null;
-      try {
-        const snap = await getDocs(query(collection(db, COLL_USERS), where('email', '==', email)));
-        if (!snap.empty) {
-          uData = snap.docs[0].data();
-        }
-      } catch (errSnap) { console.warn('Aviso ao consultar cadastro no Firestore:', errSnap); }
-
-      if (!uData) {
-        uData = {
-          uid: 'user_' + String(email).replace(/[^a-zA-Z0-9]/g, '_'),
-          email: email,
-          nomeUsuario: email.split('@')[0],
-          role: 'user',
-          status: 'pendente'
-        };
-      }
-
-      // Verificar permissão do status de aprovação
-      if (uData.status === 'pendente' && uData.role !== 'admin' && uData.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-        toastMsg('⏳ Sua conta está aguardando aprovação pelo Administrador. Você poderá acessar assim que o cadastro for aprovado!');
-        return;
-      }
-
-      await logarEEntrar(uData, '🎉 Login realizado com sucesso!');
-    });
-
-    // Cadastro Form Submit
-    document.getElementById('form-register').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const nome = document.getElementById('inp-reg-nome').value.trim();
-      const email = document.getElementById('inp-reg-email').value.trim();
-      const pass = document.getElementById('inp-reg-password').value;
-      const c1 = document.getElementById('inp-reg-cartao1').value.trim() || 'Cartão 1';
-      const c2 = document.getElementById('inp-reg-cartao2').value.trim() || 'Cartão 2';
-
-      const isObjAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase() || email.toLowerCase() === 'admin@controlefinanceiro.com';
-
-      if (isObjAdmin) {
-        if (pass !== ADMIN_PASS) {
-          toastMsg('❌ A senha para a conta do Administrador deve ser: 220101cod');
-          return;
-        }
-        const adminUid = 'admin_victor_uid';
-        const adminObj = {
-          uid: adminUid,
-          email: ADMIN_EMAIL,
-          nomeUsuario: nome || 'Victor (Admin)',
-          role: 'admin',
-          status: 'ativo',
+        // Para usuários comuns: criar com status 'pendente' aguardando aprovação
+        const uid = 'usr_' + Date.now();
+        const novoUser = {
+          uid,
+          email,
+          nomeUsuario: nome,
           nomeCartao1: c1,
-          nomeCartao2: c2
+          nomeCartao2: c2,
+          role: 'user',
+          status: 'pendente',
+          createdAt: serverTimestamp()
         };
 
         try {
-          await setDoc(doc(db, COLL_USERS, adminUid), {
-            ...adminObj,
-            createdAt: serverTimestamp()
-          }, { merge: true });
-        } catch (errDb) { console.warn('Aviso DB Admin ao cadastrar:', errDb); }
+          await setDoc(doc(db, COLL_USERS, uid), novoUser);
+        } catch (dbErr) { console.warn('Aviso DB Usuário ao cadastrar:', dbErr); }
 
-        enviarNotificacaoNovoUsuario(adminObj);
-        await logarEEntrar(adminObj, '👑 Conta de Administrador autenticada!');
-        return;
-      }
+        // Notificar por e-mail ao administrador
+        enviarNotificacaoNovoUsuario(novoUser);
 
-      // Para usuários comuns: criar com status 'pendente' aguardando aprovação
-      const uid = 'usr_' + Date.now();
-      const novoUser = {
-        uid,
-        email,
-        nomeUsuario: nome,
-        nomeCartao1: c1,
-        nomeCartao2: c2,
-        role: 'user',
-        status: 'pendente',
-        createdAt: serverTimestamp()
-      };
-
-      try {
-        await setDoc(doc(db, COLL_USERS, uid), novoUser);
-      } catch (dbErr) { console.warn('Aviso DB Usuário ao cadastrar:', dbErr); }
-
-      // Notificar por e-mail ao administrador
-      enviarNotificacaoNovoUsuario(novoUser);
-
-      toastMsg('🎉 Cadastro enviado! Sua conta está aguardando aprovação pelo Administrador (victorhomota@gmail.com).');
-    });
+        toastMsg('🎉 Cadastro enviado! Sua conta está aguardando aprovação pelo Administrador (victorhomota@gmail.com).');
+      });
+    }
 
     window.fazerLogout = async function() {
       if (confirm('Deseja realmente sair da sua conta?')) {
@@ -1394,24 +1399,29 @@
       renderAnaliseMensalEconomias();
     }
 
-    document.getElementById('form-config-reservas').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!currentUser) return;
-      const meta = parseFloat(document.getElementById('inp-meta-anual').value) || 0;
-      const real = parseFloat(document.getElementById('inp-saldo-guardado').value) || 0;
+    const formRes = document.getElementById('form-config-reservas');
+    if (formRes) {
+      formRes.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!currentUser) return;
+        const inpMeta = document.getElementById('inp-meta-anual');
+        const inpReal = document.getElementById('inp-saldo-guardado');
+        const meta = inpMeta ? parseFloat(inpMeta.value) || 0 : 0;
+        const real = inpReal ? parseFloat(inpReal.value) || 0 : 0;
 
-      try {
-        await setDoc(doc(db, COLL_RESERVAS, currentUser.uid), {
-          userId: currentUser.uid,
-          metaAnual: meta,
-          valorAtualGuardado: real,
-          updatedAt: serverTimestamp()
-        });
-        toastMsg('✅ Metas e Saldo Guardado salvos!');
-      } catch (err) {
-        toastMsg('❌ Erro ao salvar reservas: ' + err.message);
-      }
-    });
+        try {
+          await setDoc(doc(db, COLL_RESERVAS, currentUser.uid), {
+            userId: currentUser.uid,
+            metaAnual: meta,
+            valorAtualGuardado: real,
+            updatedAt: serverTimestamp()
+          });
+          toastMsg('✅ Metas e Saldo Guardado salvos!');
+        } catch (err) {
+          toastMsg('❌ Erro ao salvar reservas: ' + err.message);
+        }
+      });
+    }
 
     function renderAnaliseMensalEconomias() {
       const container = document.getElementById('container-analise-mensal-lista');
@@ -2159,34 +2169,37 @@
       document.getElementById('modal-editar-usuario-admin').style.display = 'none';
     };
 
-    document.getElementById('form-editar-usuario-admin').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const uid = document.getElementById('admin-edit-user-uid').value;
-      const nome = document.getElementById('admin-edit-user-nome').value.trim();
-      const email = document.getElementById('admin-edit-user-email').value.trim();
-      const c1 = document.getElementById('admin-edit-user-cartao1').value.trim();
-      const c2 = document.getElementById('admin-edit-user-cartao2').value.trim();
-      const status = document.getElementById('admin-edit-user-status').value;
-      const role = document.getElementById('admin-edit-user-role').value;
+    const fEditAdmin = document.getElementById('form-editar-usuario-admin');
+    if (fEditAdmin) {
+      fEditAdmin.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const uid = document.getElementById('admin-edit-user-uid').value;
+        const nome = document.getElementById('admin-edit-user-nome').value.trim();
+        const email = document.getElementById('admin-edit-user-email').value.trim();
+        const c1 = document.getElementById('admin-edit-user-cartao1').value.trim();
+        const c2 = document.getElementById('admin-edit-user-cartao2').value.trim();
+        const status = document.getElementById('admin-edit-user-status').value;
+        const role = document.getElementById('admin-edit-user-role').value;
 
-      try {
-        await setDoc(doc(db, COLL_USERS, uid), {
-          uid,
-          nomeUsuario: nome,
-          email,
-          nomeCartao1: c1,
-          nomeCartao2: c2,
-          status,
-          role
-        }, { merge: true });
+        try {
+          await setDoc(doc(db, COLL_USERS, uid), {
+            uid,
+            nomeUsuario: nome,
+            email,
+            nomeCartao1: c1,
+            nomeCartao2: c2,
+            status,
+            role
+          }, { merge: true });
 
-        fecharModalEditarUsuarioAdmin();
-        toastMsg('✅ Dados do usuário atualizados com sucesso!');
-        carregarDadosAdmin();
-      } catch (err) {
-        toastMsg('❌ Erro ao atualizar usuário: ' + err.message);
-      }
-    });
+          fecharModalEditarUsuarioAdmin();
+          toastMsg('✅ Dados do usuário atualizados com sucesso!');
+          carregarDadosAdmin();
+        } catch (err) {
+          toastMsg('❌ Erro ao atualizar usuário: ' + err.message);
+        }
+      });
+    }
 
     window.excluirUsuarioAdminDirect = async function(uid, nome) {
       if (!confirm(`Deseja realmente excluir permanentemente o cadastro do usuário "${nome}"?`)) return;
