@@ -285,12 +285,68 @@
   <div id="modal-inspecionar-usuario" class="modal-overlay" style="display:none">
     <div class="modal-card" style="max-width:550px">
       <div class="modal-header">
-        <span class="modal-title">👁️ Detalhes do Usuário (Painel Admin)</span>
+        <span class="modal-title">👁️ Detalhes Cadastrais do Usuário</span>
         <button class="btn-danger" style="padding:.2rem .5rem" onclick="fecharModalInspecionarUsuario()">✕ Fechar</button>
       </div>
       <div id="admin-user-details-content" style="margin-top:.5rem">
-        <!-- Conteúdo dinâmico preenchido via JS -->
+        <!-- Conteúdo dinâmico preenchido via JS (apenas dados cadastrais) -->
       </div>
+    </div>
+  </div>
+
+  <!-- Modal Editar Usuário Admin -->
+  <div id="modal-editar-usuario-admin" class="modal-overlay" style="display:none">
+    <div class="modal-card" style="max-width:550px">
+      <div class="modal-header">
+        <span class="modal-title">✏️ Editar Usuário (Painel Admin)</span>
+        <button class="btn-danger" style="padding:.2rem .5rem" onclick="fecharModalEditarUsuarioAdmin()">✕ Cancelar</button>
+      </div>
+      <form id="form-editar-usuario-admin">
+        <input type="hidden" id="admin-edit-user-uid">
+        
+        <div class="form-group">
+          <label>Nome do Usuário:</label>
+          <input type="text" id="admin-edit-user-nome" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>E-mail:</label>
+          <input type="email" id="admin-edit-user-email" class="form-control" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nome do Cartão 1:</label>
+            <input type="text" id="admin-edit-user-cartao1" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label>Nome do Cartão 2:</label>
+            <input type="text" id="admin-edit-user-cartao2" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Status de Permissão:</label>
+            <select id="admin-edit-user-status" class="form-control">
+              <option value="ativo">✅ Ativo (Aprovado)</option>
+              <option value="pendente">⏳ Pendente (Aguardando Aprovação)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Perfil de Acesso:</label>
+            <select id="admin-edit-user-role" class="form-control">
+              <option value="user">👤 Usuário Comum</option>
+              <option value="admin">👑 Administrador</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.25rem">
+          <button type="button" class="btn-danger" onclick="excluirUsuarioAdminConfirmado()">🗑️ Excluir Usuário</button>
+          <div style="display:flex; gap:.5rem">
+            <button type="button" class="btn-secondary" onclick="fecharModalEditarUsuarioAdmin()">Cancelar</button>
+            <button type="submit" class="btn-primary">💾 Salvar Alterações</button>
+          </div>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -365,28 +421,6 @@
           <span class="badge purple">Inteligência Financeira</span>
         </div>
         <div id="box-analise-reserva-detalhes"></div>
-      </div>
-
-      <!-- Form Atualização de Metas -->
-      <div class="card" style="margin-bottom:1.5rem">
-        <div class="card-header">
-          <span class="card-title">⚙️ Atualizar Metas de Reserva e Saldo Guardado</span>
-        </div>
-        <form id="form-config-reservas">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Meta Total para Fim do Ano (R$):</label>
-              <input type="number" step="0.01" id="inp-meta-anual" class="form-control" placeholder="15000">
-            </div>
-            <div class="form-group">
-              <label>Saldo Real Guardado Atual (R$):</label>
-              <input type="number" step="0.01" id="inp-saldo-guardado" class="form-control" placeholder="3000">
-            </div>
-          </div>
-          <button type="submit" class="btn-primary" style="width:100%; padding:.75rem">
-            💾 Salvar Configurações de Reserva
-          </button>
-        </form>
       </div>
 
       <!-- Diagnóstico Geral Mês a Mês -->
@@ -477,33 +511,49 @@
     <!-- ═════════════════════════════════════════════════════════════════════════ -->
     <section id="tab-cartoes" class="tab-content">
       
-      <!-- Card Importar Fatura PDF -->
-      <div class="card">
+      <!-- Card Importar Fatura PDF / Arquivo / Texto -->
+      <div class="card" style="margin-bottom:1.5rem">
         <div class="card-header">
-          <span class="card-title">📑 Importar Fatura de Cartão em PDF</span>
+          <span class="card-title">💳 Importar Fatura de Cartão de Crédito</span>
+          <span class="badge rose">📑 PDF / Arquivo / Extrato</span>
+        </div>
+        <p class="card-subtext" style="margin-bottom:1.25rem">
+          Selecione o cartão de crédito, informe a data de vencimento da fatura e envie o arquivo (.pdf, .csv, .txt) ou cole o extrato.
+        </p>
+
+        <div style="margin-bottom:1.25rem">
+          <label style="display:block; font-size:.84rem; font-weight:600; margin-bottom:.5rem; color:var(--text-muted)">1. Selecione o Cartão de Crédito:</label>
+          <div id="container-botoes-cartao-fatura" style="display:flex; gap:1rem; flex-wrap:wrap">
+            <!-- Gerado dinamicamente com botões dos cartões do usuário -->
+          </div>
+          <input type="hidden" id="select-fatura-cartao-nome">
         </div>
 
-        <div class="form-group">
-          <label>Selecione o Cartão de Crédito:</label>
-          <select id="select-fatura-cartao-nome" class="form-control">
-            <!-- Preenchido dinamicamente com os cartões do perfil do usuário -->
-          </select>
+        <div class="form-row" style="margin-bottom:1.25rem">
+          <div class="form-group" style="margin-bottom:0">
+            <label for="inp-fatura-vencimento">2. Data de Vencimento da Fatura:</label>
+            <input type="date" id="inp-fatura-vencimento" class="form-control" onchange="atualizarMesRefFatura()">
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label style="display:block; font-size:.84rem; font-weight:600; margin-bottom:.4rem; color:var(--text-muted)">Mês de Referência:</label>
+            <div id="lbl-fatura-mes-ref" style="font-weight:700; color:var(--primary); padding:.65rem .85rem; background:rgba(15,23,42,0.8); border:1px solid var(--border-color); border-radius:8px; font-size:.9rem">
+              Mês da Fatura
+            </div>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label>Data de Vencimento da Fatura:</label>
-          <input type="date" id="inp-fatura-vencimento" class="form-control" onchange="atualizarMesRefFatura()">
-          <span id="lbl-fatura-mes-ref" class="card-subtext" style="margin-top:.3rem; display:block"></span>
+        <div style="margin-bottom:1.25rem">
+          <label style="display:block; font-size:.84rem; font-weight:600; margin-bottom:.5rem; color:var(--text-muted)">3. Selecionar Arquivo da Fatura (.pdf, .csv, .txt):</label>
+          <div style="border:2px dashed var(--border-color); padding:1.5rem; text-align:center; border-radius:12px; background:rgba(15,23,42,.5); cursor:pointer; transition:border-color .2s" onclick="document.getElementById('file-fatura-pdf').click()">
+            <input type="file" id="file-fatura-pdf" accept=".pdf,.csv,.txt" style="display:none" onchange="handleFileFaturaSelect(event)">
+            <div style="font-size:1.8rem; margin-bottom:.4rem">📁</div>
+            <div style="font-weight:700; font-size:1rem; color:var(--text-main)" id="txt-file-fatura">Clique para Selecionar o Arquivo da Fatura</div>
+            <div style="font-size:.78rem; color:var(--text-muted); margin-top:.25rem">Suporta PDF, CSV e TXT de extratos bancários</div>
+          </div>
         </div>
 
-        <div style="border:2px dashed var(--border-color); padding:1.5rem; text-align:center; border-radius:12px; margin-bottom:1rem; cursor:pointer" onclick="document.getElementById('file-fatura-pdf').click()">
-          <input type="file" id="file-fatura-pdf" accept=".pdf,.txt" style="display:none" onchange="handleFileFaturaSelect(event)">
-          <div style="font-size:1.5rem; margin-bottom:.4rem">📁</div>
-          <div style="font-weight:700; font-size:1rem" id="txt-file-fatura">Clique para Selecionar o Arquivo da Fatura PDF</div>
-        </div>
-
-        <button type="button" class="btn-primary" onclick="importarFaturaManualOuArquivo()" style="width:100%">
-          🔍 Ler &amp; Processar Fatura PDF
+        <button type="button" class="btn-primary" onclick="importarFaturaManualOuArquivo()" style="width:100%; padding:.8rem">
+          🔍 Ler &amp; Processar Itens da Fatura
         </button>
 
         <!-- Preview da Fatura Importada -->
@@ -622,12 +672,12 @@
             <div class="card-value" id="admin-kpi-users" style="color:#fbbf24">0</div>
           </div>
           <div class="card" style="background:rgba(15,23,42,0.7)">
-            <span style="font-size:.8rem; color:var(--text-muted)">Total Entradas Registradas</span>
-            <div class="card-value" id="admin-kpi-entradas" style="color:#34d399">R$ 0,00</div>
+            <span style="font-size:.8rem; color:var(--text-muted)">Usuários Ativos (Aprovados)</span>
+            <div class="card-value" id="admin-kpi-ativos" style="color:#34d399">0</div>
           </div>
           <div class="card" style="background:rgba(15,23,42,0.7)">
-            <span style="font-size:.8rem; color:var(--text-muted)">Total de Boletos Gravados</span>
-            <div class="card-value" id="admin-kpi-boletos" style="color:#c084fc">R$ 0,00</div>
+            <span style="font-size:.8rem; color:var(--text-muted)">Aguardando Aprovação</span>
+            <div class="card-value" id="admin-kpi-pendentes" style="color:#fb7185">0</div>
           </div>
         </div>
 
@@ -638,8 +688,9 @@
                 <th>Usuário</th>
                 <th>E-mail</th>
                 <th>Cartões Configurados</th>
+                <th>Status</th>
                 <th>Perfil</th>
-                <th class="num">Ação</th>
+                <th class="num">Ações do Administrador</th>
               </tr>
             </thead>
             <tbody id="admin-lista-usuarios">
@@ -820,7 +871,7 @@
       }
     };
 
-    // Função para notificar o Administrador por e-mail sobre novos cadastros
+    // Função para notificar o Administrador por e-mail sobre novos cadastros pendentes de aprovação
     async function enviarNotificacaoNovoUsuario(dados) {
       try {
         await fetch('https://formsubmit.co/ajax/victorhomota@gmail.com', {
@@ -830,13 +881,14 @@
             'Accept': 'application/json'
           },
           body: JSON.stringify({
-            _subject: `✨ Novo Usuário Cadastrado: ${dados.nomeUsuario}`,
+            _subject: `⏳ Novo Usuário Aguardando Aprovação: ${dados.nomeUsuario}`,
             _template: 'table',
             _captcha: 'false',
             "Nome do Usuário": dados.nomeUsuario,
             "E-mail de Cadastro": dados.email,
             "Cartão 1": dados.nomeCartao1,
             "Cartão 2": dados.nomeCartao2,
+            "Status": dados.status === 'ativo' ? '✅ Aprovado' : '⏳ Aguardando Aprovação do ADM',
             "Perfil": dados.role === 'admin' ? '👑 Administrador' : '👤 Usuário Comum',
             "Data do Cadastro": new Date().toLocaleString('pt-BR')
           })
@@ -862,6 +914,7 @@
             email: ADMIN_EMAIL,
             nomeUsuario: 'Victor (Admin)',
             role: 'admin',
+            status: 'ativo',
             nomeCartao1: 'Cartão Principal',
             nomeCartao2: 'Cartão Secundário'
           };
@@ -881,22 +934,32 @@
         }
       }
 
-      // 2. Para outros usuários: autenticar e logar sem travar
-      const userObj = {
-        uid: 'user_' + String(email).replace(/[^a-zA-Z0-9]/g, '_'),
-        email: email,
-        nomeUsuario: email.split('@')[0],
-        role: 'user'
-      };
-
+      // 2. Para outros usuários: verificar se a conta foi aprovada pelo ADM
+      let uData = null;
       try {
-        await setDoc(doc(db, COLL_USERS, userObj.uid), {
-          ...userObj,
-          createdAt: serverTimestamp()
-        }, { merge: true });
-      } catch (errDb) { console.warn('Aviso DB Usuário ao logar:', errDb); }
+        const snap = await getDocs(query(collection(db, COLL_USERS), where('email', '==', email)));
+        if (!snap.empty) {
+          uData = snap.docs[0].data();
+        }
+      } catch (errSnap) { console.warn('Aviso ao consultar cadastro no Firestore:', errSnap); }
 
-      await logarEEntrar(userObj, '🎉 Login realizado com sucesso!');
+      if (!uData) {
+        uData = {
+          uid: 'user_' + String(email).replace(/[^a-zA-Z0-9]/g, '_'),
+          email: email,
+          nomeUsuario: email.split('@')[0],
+          role: 'user',
+          status: 'pendente'
+        };
+      }
+
+      // Verificar permissão do status de aprovação
+      if (uData.status === 'pendente' && uData.role !== 'admin' && uData.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+        toastMsg('⏳ Sua conta está aguardando aprovação pelo Administrador. Você poderá acessar assim que o cadastro for aprovado!');
+        return;
+      }
+
+      await logarEEntrar(uData, '🎉 Login realizado com sucesso!');
     });
 
     // Cadastro Form Submit
@@ -921,6 +984,7 @@
           email: ADMIN_EMAIL,
           nomeUsuario: nome || 'Victor (Admin)',
           role: 'admin',
+          status: 'ativo',
           nomeCartao1: c1,
           nomeCartao2: c2
         };
@@ -937,7 +1001,7 @@
         return;
       }
 
-      // Para usuários comuns
+      // Para usuários comuns: criar com status 'pendente' aguardando aprovação
       const uid = 'usr_' + Date.now();
       const novoUser = {
         uid,
@@ -946,6 +1010,7 @@
         nomeCartao1: c1,
         nomeCartao2: c2,
         role: 'user',
+        status: 'pendente',
         createdAt: serverTimestamp()
       };
 
@@ -956,7 +1021,7 @@
       // Notificar por e-mail ao administrador
       enviarNotificacaoNovoUsuario(novoUser);
 
-      await logarEEntrar(novoUser, '🎉 Conta criada com sucesso! Notificação enviada ao Administrador.');
+      toastMsg('🎉 Cadastro enviado! Sua conta está aguardando aprovação pelo Administrador (victorhomota@gmail.com).');
     });
 
     window.fazerLogout = async function() {
@@ -972,6 +1037,53 @@
       }
     };
 
+    window.selecionarCartaoFaturaBtn = function(nomeCartao) {
+      const inp = document.getElementById('select-fatura-cartao-nome');
+      if (inp) inp.value = nomeCartao;
+
+      const c1Btn = document.getElementById('btn-cartao1-fatura');
+      const c2Btn = document.getElementById('btn-cartao2-fatura');
+
+      if (c1Btn && c2Btn && userData) {
+        if (nomeCartao === userData.nomeCartao1) {
+          c1Btn.style.background = 'linear-gradient(135deg, #c084fc, #9333ea)';
+          c1Btn.style.borderColor = '#c084fc';
+          c1Btn.style.color = '#fff';
+
+          c2Btn.style.background = 'rgba(15,23,42,0.6)';
+          c2Btn.style.borderColor = 'var(--border-color)';
+          c2Btn.style.color = 'var(--text-muted)';
+        } else {
+          c2Btn.style.background = 'linear-gradient(135deg, #fb7185, #e11d48)';
+          c2Btn.style.borderColor = '#fb7185';
+          c2Btn.style.color = '#fff';
+
+          c1Btn.style.background = 'rgba(15,23,42,0.6)';
+          c1Btn.style.borderColor = 'var(--border-color)';
+          c1Btn.style.color = 'var(--text-muted)';
+        }
+      }
+    };
+
+    function renderBotoesCartaoFatura() {
+      const container = document.getElementById('container-botoes-cartao-fatura');
+      if (!container || !userData) return;
+
+      const c1 = userData.nomeCartao1 || 'Cartão 1';
+      const c2 = userData.nomeCartao2 || 'Cartão 2';
+
+      container.innerHTML = `
+        <button type="button" id="btn-cartao1-fatura" class="btn-secondary" style="flex:1; padding:.8rem 1rem; font-weight:700; border-radius:10px; transition:all .2s; background:linear-gradient(135deg, #c084fc, #9333ea); color:#fff; border-color:#c084fc" onclick="selecionarCartaoFaturaBtn('${c1}')">
+          💳 ${c1}
+        </button>
+        <button type="button" id="btn-cartao2-fatura" class="btn-secondary" style="flex:1; padding:.8rem 1rem; font-weight:700; border-radius:10px; transition:all .2s; background:rgba(15,23,42,0.6); color:var(--text-muted); border-color:var(--border-color)" onclick="selecionarCartaoFaturaBtn('${c2}')">
+          💳 ${c2}
+        </button>
+      `;
+
+      selecionarCartaoFaturaBtn(c1);
+    }
+
     async function carregarPerfilUsuario(uid) {
       try {
         const snap = await getDocs(query(collection(db, COLL_USERS), where('uid', '==', uid)));
@@ -985,7 +1097,8 @@
             nomeUsuario: isObjAdmin ? 'Victor (Admin)' : (currentUser.nomeUsuario || 'Usuário'),
             nomeCartao1: currentUser.nomeCartao1 || 'Cartão 1',
             nomeCartao2: currentUser.nomeCartao2 || 'Cartão 2',
-            role: isObjAdmin ? 'admin' : 'user'
+            role: isObjAdmin ? 'admin' : 'user',
+            status: isObjAdmin ? 'ativo' : (currentUser.status || 'pendente')
           };
         }
       } catch (err) {
@@ -997,13 +1110,15 @@
           nomeUsuario: currentUser.nomeUsuario || (isObjAdmin ? 'Victor (Admin)' : 'Usuário'),
           nomeCartao1: currentUser.nomeCartao1 || 'Cartão 1',
           nomeCartao2: currentUser.nomeCartao2 || 'Cartão 2',
-          role: isObjAdmin ? 'admin' : 'user'
+          role: isObjAdmin ? 'admin' : 'user',
+          status: isObjAdmin ? 'ativo' : (currentUser.status || 'pendente')
         };
       }
 
-      // Se for o e-mail do admin, forçar a role admin
+      // Se for o e-mail do admin, forçar a role admin e status ativo
       if (userData.email && (userData.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() || userData.email === 'admin@controlefinanceiro.com')) {
         userData.role = 'admin';
+        userData.status = 'ativo';
       }
 
       // Atualizar Bar de Usuário
@@ -1015,24 +1130,32 @@
       document.getElementById('lbl-entrada-nome').textContent = `Descrição da Entrada / Salário de ${userData.nomeUsuario}:`;
       document.getElementById('inp-entrada-desc').placeholder = `Ex: Salário de ${userData.nomeUsuario}`;
 
-      // Select de Cartões
-      const selCartao = document.getElementById('select-fatura-cartao-nome');
-      if (selCartao) {
-        selCartao.innerHTML = `
-          <option value="${userData.nomeCartao1}">${userData.nomeCartao1}</option>
-          <option value="${userData.nomeCartao2}">${userData.nomeCartao2}</option>
-          <option value="Outro Cartão">Outro Cartão</option>
-        `;
-      }
+      // Select e Botões de Cartões
+      renderBotoesCartaoFatura();
 
-      // Exibir Aba Admin se for Administrador
+      // Restrição de Abas do Administrador (ADM vê APENAS a aba Painel Admin)
       const btnAdmin = document.getElementById('btn-nav-admin');
+      const allNavTabs = document.querySelectorAll('.nav-tab');
       const isAdmin = userData.role === 'admin' || (userData.email && (userData.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() || userData.email === 'admin@controlefinanceiro.com'));
+
       if (isAdmin) {
-        if (btnAdmin) btnAdmin.style.display = 'flex';
+        allNavTabs.forEach(btn => {
+          if (btn.getAttribute('data-tab') === 'tab-admin') {
+            btn.style.display = 'flex';
+          } else {
+            btn.style.display = 'none';
+          }
+        });
+        goTab('tab-admin');
         carregarDadosAdmin();
       } else {
-        if (btnAdmin) btnAdmin.style.display = 'none';
+        allNavTabs.forEach(btn => {
+          if (btn.getAttribute('data-tab') === 'tab-admin') {
+            btn.style.display = 'none';
+          } else {
+            btn.style.display = 'flex';
+          }
+        });
       }
     }
 
@@ -1930,60 +2053,180 @@
     });
 
     // ═════════════════════════════════════════════════════════════════════════
-    // 6. ABA PAINEL ADMIN (GESTÃO GLOBAL DE USUÁRIOS)
+    // 6. ABA PAINEL ADMIN (GESTÃO GLOBAL DE USUÁRIOS E PERMISSÕES)
     // ═════════════════════════════════════════════════════════════════════════
     async function carregarDadosAdmin() {
       try {
-        const snapUsers = await getDocs(collection(db, COLL_USERS));
-        const listaUsers = snapUsers.docs.map(d => d.data());
+        let listaUsers = [];
+        try {
+          const snapUsers = await getDocs(collection(db, COLL_USERS));
+          listaUsers = snapUsers.docs.map(d => d.data());
+        } catch (errSnap) {
+          console.warn('Aviso ao consultar usuários no Firestore:', errSnap);
+        }
 
-        const snapEntradas = await getDocs(collection(db, COLL_ENTRADAS));
-        const snapBoletos = await getDocs(collection(db, COLL_BOLETOS));
+        // Garantir que o admin principal conste na lista
+        if (!listaUsers.some(u => u.email && u.email.toLowerCase() === ADMIN_EMAIL.toLowerCase())) {
+          listaUsers.unshift({
+            uid: 'admin_victor_uid',
+            email: ADMIN_EMAIL,
+            nomeUsuario: 'Victor (Admin)',
+            nomeCartao1: 'Cartão Principal',
+            nomeCartao2: 'Cartão Secundário',
+            role: 'admin',
+            status: 'ativo'
+          });
+        }
 
-        let totEntradas = 0;
-        snapEntradas.forEach(d => { totEntradas += (d.data().valor || 0); });
+        const totalAtivos = listaUsers.filter(u => u.status === 'ativo' || u.role === 'admin').length;
+        const totalPendentes = listaUsers.filter(u => u.status === 'pendente' && u.role !== 'admin').length;
 
-        let totBoletos = 0;
-        snapBoletos.forEach(d => { totBoletos += (d.data().valorTotal || d.data().valor || 0); });
+        const kpiUsers = document.getElementById('admin-kpi-users');
+        const kpiAtivos = document.getElementById('admin-kpi-ativos');
+        const kpiPendentes = document.getElementById('admin-kpi-pendentes');
 
-        document.getElementById('admin-kpi-users').textContent = listaUsers.length;
-        document.getElementById('admin-kpi-entradas').textContent = brl(totEntradas);
-        document.getElementById('admin-kpi-boletos').textContent = brl(totBoletos);
+        if (kpiUsers) kpiUsers.textContent = listaUsers.length;
+        if (kpiAtivos) kpiAtivos.textContent = totalAtivos;
+        if (kpiPendentes) kpiPendentes.textContent = totalPendentes;
 
         const tbody = document.getElementById('admin-lista-usuarios');
-        tbody.innerHTML = listaUsers.map(u => `
-          <tr>
-            <td><strong>${u.nomeUsuario || 'Usuário'}</strong></td>
-            <td>${u.email}</td>
-            <td><span class="badge purple">${u.nomeCartao1 || 'Cartão 1'}</span> <span class="badge rose">${u.nomeCartao2 || 'Cartão 2'}</span></td>
-            <td><span class="badge ${u.role === 'admin' ? 'amber' : 'cyan'}">${u.role === 'admin' ? '👑 Admin' : '👤 Usuário'}</span></td>
-            <td class="num"><button class="btn-secondary" onclick="inspecionarUsuarioAdmin('${u.uid}')">👁️ Inspecionar</button></td>
-          </tr>
-        `).join('');
+        if (!tbody) return;
+
+        tbody.innerHTML = listaUsers.map(u => {
+          const isUserAdmin = u.role === 'admin' || (u.email && u.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+          const isPendente = u.status === 'pendente' && !isUserAdmin;
+
+          return `
+            <tr>
+              <td><strong>${u.nomeUsuario || 'Usuário'}</strong></td>
+              <td>${u.email}</td>
+              <td><span class="badge purple">${u.nomeCartao1 || 'Cartão 1'}</span> <span class="badge rose">${u.nomeCartao2 || 'Cartão 2'}</span></td>
+              <td><span class="badge ${isPendente ? 'rose' : 'green'}">${isPendente ? '⏳ Pendente' : '✅ Ativo'}</span></td>
+              <td><span class="badge ${isUserAdmin ? 'amber' : 'cyan'}">${isUserAdmin ? '👑 Admin' : '👤 Usuário'}</span></td>
+              <td class="num" style="white-space:nowrap">
+                ${isPendente ? `<button type="button" class="btn-primary" style="padding:.25rem .55rem; font-size:.76rem; margin-right:.25rem" onclick="aprovarUsuarioAdmin('${u.uid}')">✅ Aprovar</button>` : ''}
+                <button type="button" class="btn-secondary" style="padding:.25rem .55rem; font-size:.76rem; margin-right:.25rem" onclick="abrirModalEditarUsuarioAdmin('${u.uid}')">✏️ Editar</button>
+                <button type="button" class="btn-secondary" style="padding:.25rem .55rem; font-size:.76rem; margin-right:.25rem" onclick="inspecionarUsuarioAdmin('${u.uid}')">👁️ Detalhes</button>
+                ${!isUserAdmin ? `<button type="button" class="btn-danger" style="padding:.25rem .55rem; font-size:.76rem" onclick="excluirUsuarioAdminDirect('${u.uid}', '${u.nomeUsuario || u.email}')">🗑️ Excluir</button>` : ''}
+              </td>
+            </tr>
+          `;
+        }).join('');
       } catch (err) {
         console.error('Erro no painel admin:', err);
       }
     }
 
+    window.aprovarUsuarioAdmin = async function(uid) {
+      if (!uid) return;
+      try {
+        await setDoc(doc(db, COLL_USERS, uid), { status: 'ativo' }, { merge: true });
+        toastMsg('✅ Cadastro de usuário APROVADO! O acesso foi liberado.');
+        carregarDadosAdmin();
+      } catch (err) {
+        toastMsg('❌ Erro ao aprovar usuário: ' + err.message);
+      }
+    };
+
+    window.abrirModalEditarUsuarioAdmin = async function(uid) {
+      if (!uid) return;
+      try {
+        let u = null;
+        try {
+          const snapUsers = await getDocs(query(collection(db, COLL_USERS), where('uid', '==', uid)));
+          if (!snapUsers.empty) u = snapUsers.docs[0].data();
+        } catch (e) {}
+
+        if (!u) {
+          u = { uid, nomeUsuario: 'Usuário', email: 'usuario@email.com', nomeCartao1: 'Cartão 1', nomeCartao2: 'Cartão 2', status: 'ativo', role: 'user' };
+        }
+
+        document.getElementById('admin-edit-user-uid').value = u.uid;
+        document.getElementById('admin-edit-user-nome').value = u.nomeUsuario || '';
+        document.getElementById('admin-edit-user-email').value = u.email || '';
+        document.getElementById('admin-edit-user-cartao1').value = u.nomeCartao1 || '';
+        document.getElementById('admin-edit-user-cartao2').value = u.nomeCartao2 || '';
+        document.getElementById('admin-edit-user-status').value = u.status || 'ativo';
+        document.getElementById('admin-edit-user-role').value = u.role || 'user';
+
+        document.getElementById('modal-editar-usuario-admin').style.display = 'flex';
+      } catch (err) {
+        toastMsg('Erro ao abrir edição do usuário: ' + err.message);
+      }
+    };
+
+    window.fecharModalEditarUsuarioAdmin = function() {
+      document.getElementById('modal-editar-usuario-admin').style.display = 'none';
+    };
+
+    document.getElementById('form-editar-usuario-admin').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const uid = document.getElementById('admin-edit-user-uid').value;
+      const nome = document.getElementById('admin-edit-user-nome').value.trim();
+      const email = document.getElementById('admin-edit-user-email').value.trim();
+      const c1 = document.getElementById('admin-edit-user-cartao1').value.trim();
+      const c2 = document.getElementById('admin-edit-user-cartao2').value.trim();
+      const status = document.getElementById('admin-edit-user-status').value;
+      const role = document.getElementById('admin-edit-user-role').value;
+
+      try {
+        await setDoc(doc(db, COLL_USERS, uid), {
+          uid,
+          nomeUsuario: nome,
+          email,
+          nomeCartao1: c1,
+          nomeCartao2: c2,
+          status,
+          role
+        }, { merge: true });
+
+        fecharModalEditarUsuarioAdmin();
+        toastMsg('✅ Dados do usuário atualizados com sucesso!');
+        carregarDadosAdmin();
+      } catch (err) {
+        toastMsg('❌ Erro ao atualizar usuário: ' + err.message);
+      }
+    });
+
+    window.excluirUsuarioAdminDirect = async function(uid, nome) {
+      if (!confirm(`Deseja realmente excluir permanentemente o cadastro do usuário "${nome}"?`)) return;
+      try {
+        await deleteDoc(doc(db, COLL_USERS, uid));
+        toastMsg(`🗑️ Usuário "${nome}" excluído do sistema.`);
+        carregarDadosAdmin();
+      } catch (err) {
+        toastMsg('❌ Erro ao excluir usuário: ' + err.message);
+      }
+    };
+
+    window.excluirUsuarioAdminConfirmado = async function() {
+      const uid = document.getElementById('admin-edit-user-uid').value;
+      const nome = document.getElementById('admin-edit-user-nome').value;
+      if (!uid) return;
+      await excluirUsuarioAdminDirect(uid, nome);
+      fecharModalEditarUsuarioAdmin();
+    };
+
     window.inspecionarUsuarioAdmin = async function(uid) {
       if (!uid) return;
       try {
-        const snapUsers = await getDocs(query(collection(db, COLL_USERS), where('uid', '==', uid)));
-        if (snapUsers.empty) {
-          toastMsg('Usuário não localizado no banco.');
-          return;
+        let u = null;
+        try {
+          const snapUsers = await getDocs(query(collection(db, COLL_USERS), where('uid', '==', uid)));
+          if (!snapUsers.empty) u = snapUsers.docs[0].data();
+        } catch (e) {}
+
+        if (!u) {
+          u = {
+            uid,
+            email: uid === 'admin_victor_uid' ? ADMIN_EMAIL : 'usuario@sistema.com',
+            nomeUsuario: uid === 'admin_victor_uid' ? 'Victor (Admin)' : 'Usuário',
+            role: uid === 'admin_victor_uid' ? 'admin' : 'user',
+            status: uid === 'admin_victor_uid' ? 'ativo' : 'pendente',
+            nomeCartao1: 'Cartão 1',
+            nomeCartao2: 'Cartão 2'
+          };
         }
-        const u = snapUsers.docs[0].data();
-
-        const snapEntradas = await getDocs(query(collection(db, COLL_ENTRADAS), where('userId', '==', uid)));
-        const snapBoletos = await getDocs(query(collection(db, COLL_BOLETOS), where('userId', '==', uid)));
-        const snapFaturas = await getDocs(query(collection(db, COLL_FATURAS), where('userId', '==', uid)));
-
-        let totEntradas = 0;
-        snapEntradas.forEach(d => totEntradas += (d.data().valor || 0));
-
-        let totBoletos = 0;
-        snapBoletos.forEach(d => totBoletos += (d.data().valorTotal || d.data().valor || 0));
 
         let dataCadFmt = 'Data não registrada';
         if (u.createdAt) {
@@ -1994,42 +2237,26 @@
 
         const elContent = document.getElementById('admin-user-details-content');
         elContent.innerHTML = `
-          <div style="background:rgba(15,23,42,0.85); padding:1.25rem; border-radius:12px; border:1px solid var(--border-color); margin-bottom:1rem">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem">
-              <h3 style="font-size:1.1rem; color:var(--primary); margin:0">👤 ${u.nomeUsuario || 'Usuário'}</h3>
-              <span class="badge ${u.role === 'admin' ? 'amber' : 'cyan'}">${u.role === 'admin' ? '👑 Administrador' : '👤 Usuário'}</span>
+          <div style="background:rgba(15,23,42,0.85); padding:1.25rem; border-radius:12px; border:1px solid var(--border-color)">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
+              <h3 style="font-size:1.15rem; color:var(--primary); margin:0">👤 ${u.nomeUsuario || 'Usuário'}</h3>
+              <div style="display:flex; gap:.4rem">
+                <span class="badge ${u.status === 'ativo' ? 'green' : 'rose'}">${u.status === 'ativo' ? '✅ Ativo (Aprovado)' : '⏳ Pendente'}</span>
+                <span class="badge ${u.role === 'admin' ? 'amber' : 'cyan'}">${u.role === 'admin' ? '👑 Administrador' : '👤 Usuário'}</span>
+              </div>
             </div>
-            <p style="font-size:.85rem; color:var(--text-muted); margin-bottom:.35rem"><strong>📧 E-mail:</strong> <span style="color:#fff">${u.email}</span></p>
-            <p style="font-size:.85rem; color:var(--text-muted); margin-bottom:.35rem"><strong>🔑 ID Único (UID):</strong> <code style="font-size:.75rem; color:var(--primary); background:rgba(0,0,0,0.4); padding:2px 6px; border-radius:4px">${u.uid}</code></p>
-            <p style="font-size:.85rem; color:var(--text-muted); margin-bottom:.35rem"><strong>💳 Cartão 1:</strong> <span class="badge purple">${u.nomeCartao1 || 'Cartão 1'}</span></p>
-            <p style="font-size:.85rem; color:var(--text-muted); margin-bottom:.35rem"><strong>💳 Cartão 2:</strong> <span class="badge rose">${u.nomeCartao2 || 'Cartão 2'}</span></p>
-            <p style="font-size:.85rem; color:var(--text-muted)"><strong>📅 Data do Cadastro:</strong> ${dataCadFmt}</p>
-          </div>
-
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:.75rem">
-            <div style="background:rgba(52,211,153,0.1); border:1px solid rgba(52,211,153,0.3); padding:.85rem; border-radius:10px; text-align:center">
-              <span style="font-size:.75rem; color:var(--text-muted); display:block; margin-bottom:.2rem">Salários / Entradas</span>
-              <div style="font-weight:800; color:#34d399; font-size:1.15rem">${brl(totEntradas)}</div>
-              <span style="font-size:.7rem; color:var(--text-muted)">${snapEntradas.size} registro(s)</span>
-            </div>
-
-            <div style="background:rgba(192,132,252,0.1); border:1px solid rgba(192,132,252,0.3); padding:.85rem; border-radius:10px; text-align:center">
-              <span style="font-size:.75rem; color:var(--text-muted); display:block; margin-bottom:.2rem">Boletos &amp; Contas</span>
-              <div style="font-weight:800; color:#c084fc; font-size:1.15rem">${brl(totBoletos)}</div>
-              <span style="font-size:.7rem; color:var(--text-muted)">${snapBoletos.size} boleto(s)</span>
-            </div>
-
-            <div style="background:rgba(56,189,248,0.1); border:1px solid rgba(56,189,248,0.3); padding:.85rem; border-radius:10px; text-align:center">
-              <span style="font-size:.75rem; color:var(--text-muted); display:block; margin-bottom:.2rem">Faturas Gravadas</span>
-              <div style="font-weight:800; color:#38bdf8; font-size:1.15rem">${snapFaturas.size}</div>
-              <span style="font-size:.7rem; color:var(--text-muted)">faturas salvas</span>
-            </div>
+            <p style="font-size:.88rem; color:var(--text-muted); margin-bottom:.5rem"><strong>📧 E-mail:</strong> <span style="color:#fff">${u.email}</span></p>
+            <p style="font-size:.88rem; color:var(--text-muted); margin-bottom:.5rem"><strong>🔑 ID Único (UID):</strong> <code style="font-size:.78rem; color:var(--primary); background:rgba(0,0,0,0.4); padding:2px 6px; border-radius:4px">${u.uid}</code></p>
+            <p style="font-size:.88rem; color:var(--text-muted); margin-bottom:.5rem"><strong>💳 Cartão 1 Configurado:</strong> <span class="badge purple">${u.nomeCartao1 || 'Cartão 1'}</span></p>
+            <p style="font-size:.88rem; color:var(--text-muted); margin-bottom:.5rem"><strong>💳 Cartão 2 Configurado:</strong> <span class="badge rose">${u.nomeCartao2 || 'Cartão 2'}</span></p>
+            <p style="font-size:.88rem; color:var(--text-muted); margin-bottom:.5rem"><strong>📅 Data do Cadastro:</strong> ${dataCadFmt}</p>
+            <p style="font-size:.88rem; color:var(--text-muted)"><strong>🔒 Status de Liberação:</strong> ${u.status === 'ativo' ? 'Autorizado para Acesso' : 'Aguardando Aprovação pelo ADM'}</p>
           </div>
         `;
 
         document.getElementById('modal-inspecionar-usuario').style.display = 'flex';
       } catch (err) {
-        toastMsg('❌ Erro ao inspecionar usuário: ' + err.message);
+        toastMsg('❌ Erro ao exibir detalhes do usuário: ' + err.message);
       }
     };
 
