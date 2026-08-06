@@ -1849,6 +1849,315 @@
     };
 
     // ═════════════════════════════════════════════════════════════════════════
+    // PROCESSAMENTO E IMPORTAÇÃO DE FATURAS & BOLETOS (PDF / TEXTO / EXTRATO)
+    // ═════════════════════════════════════════════════════════════════════════
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    async function lerTextoDeArquivo(file) {
+      if (!file) return '';
+      if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          let fullText = '';
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(' ');
+            fullText += pageText + '\n';
+          }
+          return fullText;
+        } catch (e) {
+          console.warn('Erro ao ler PDF via pdf.js:', e);
+        }
+      }
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result || '');
+        reader.onerror = () => resolve('');
+        reader.readAsText(file);
+      });
+    }
+
+    let faturaFileSelecionado = null;
+    let faturaItensPreview = [];
+
+    function handleFileFaturaSelect(e) {
+      if (e.target.files && e.target.files[0]) {
+        faturaFileSelecionado = e.target.files[0];
+        const txtEl = document.getElementById('txt-file-fatura');
+        if (txtEl) txtEl.textContent = `📄 Arquivo Selecionado: ${faturaFileSelecionado.name}`;
+      }
+    }
+    window.handleFileFaturaSelect = handleFileFaturaSelect;
+
+    function atualizarMesRefFatura() {
+      const dtVal = document.getElementById('inp-fatura-vencimento')?.value;
+      const lbl = document.getElementById('lbl-fatura-mes-ref');
+      if (!lbl) return;
+      if (!dtVal) {
+        lbl.textContent = 'Mês da Fatura';
+        return;
+      }
+      const [ano, mes] = dtVal.split('-');
+      const dObj = new Date(parseInt(ano), parseInt(mes) - 1, 1);
+      const nomeStr = dObj.toLocaleString('pt-BR', { month: 'long' });
+      lbl.textContent = `Fatura de ${nomeStr.charAt(0).toUpperCase() + nomeStr.slice(1)} de ${ano}`;
+    }
+    window.atualizarMesRefFatura = atualizarMesRefFatura;
+
+    async function importarFaturaManualOuArquivo() {
+      const dtVenc = document.getElementById('inp-fatura-vencimento')?.value;
+      const txtManual = document.getElementById('inp-fatura-txt')?.value || '';
+      const cartaoNome = document.getElementById('select-fatura-cartao-nome')?.value || (userData?.nomeCartao1 || 'Cartão 1');
+
+      let textoBruto = txtManual;
+      if (faturaFileSelecionado) {
+        toastMsg('⏳ Lendo arquivo da fatura...');
+        const textoArq = await lerTextoDeArquivo(faturaFileSelecionado);
+        if (textoArq) textoBruto += '\n' + textoArq;
+      }
+
+      if (!textoBruto.trim()) {
+        toastMsg('⚠️ Selecione um arquivo (.pdf, .txt, .csv) ou cole o texto da fatura.');
+        return;
+      }
+
+      const linhas = textoBruto.split(/\r?\n/);
+      faturaItensPreview = [];
+      let totalCalculado = 0;
+
+      linhas.forEach(linha => {
+        const l = linha.trim();
+        if (!l || l.length < 4) return;
+
+        const matchPreco = l.match(/(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+\.\d{2}|\d+,\d{2})/i);
+        if (matchPreco) {
+          let valStr = matchPreco[1].replace(/\./g, '').replace(',', '.');
+          let valNum = parseFloat(valStr) || 0;
+          if (valNum > 0 && valNum < 100000) {
+            let desc = l.replace(matchPreco[0], '').replace(/R\$/g, '').trim();
+            if (!desc || desc.length < 2) desc = 'Lançamento Fatura';
+
+            faturaItensPreview.push({
+              descricao: desc,
+              valor: valNum
+            });
+            totalCalculado += valNum;
+          }
+        }
+      });
+
+      if (!faturaItensPreview.length) {
+        const matchTotal = textoBruto.match(/(?:TOTAL|TOTAL DA FATURA|VALOR FATURA|VALOR A PAGAR).*?(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+\.\d{2})/i);
+        if (matchTotal) {
+          let valNum = parseFloat(matchTotal[1].replace(/\./g, '').replace(',', '.')) || 0;
+          if (valNum > 0) {
+            faturaItensPreview.push({
+              descricao: `Fatura ${cartaoNome}`,
+              valor: valNum
+            });
+            totalCalculado = valNum;
+          }
+        }
+      }
+
+      if (!faturaItensPreview.length) {
+        toastMsg('⚠️ Nenhum valor identificado. Digite ou cole os lançamentos da fatura.');
+        return;
+      }
+
+      const boxRev = document.getElementById('box-revisao-fatura');
+      const badgeTot = document.getElementById('badge-total-preview-fatura');
+      const elLista = document.getElementById('lista-preview-fatura-itens');
+
+      if (badgeTot) badgeTot.textContent = brl(totalCalculado);
+      if (elLista) {
+        elLista.innerHTML = faturaItensPreview.map((it, idx) => `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:.5rem 0; border-bottom:1px solid rgba(255,255,255,0.05)">
+            <span style="font-size:.85rem; color:#fff">🛒 ${it.descricao}</span>
+            <span style="font-size:.88rem; font-weight:700; color:#fb7185">${brl(it.valor)}</span>
+          </div>
+        `).join('');
+      }
+
+      if (boxRev) boxRev.style.display = 'block';
+      toastMsg(`✅ ${faturaItensPreview.length} item(ns) identificados na fatura! Total: ${brl(totalCalculado)}`);
+    }
+    window.importarFaturaManualOuArquivo = importarFaturaManualOuArquivo;
+
+    async function confirmarEGravarFaturaDocumento() {
+      if (!currentUser) return;
+      const cartaoNome = document.getElementById('select-fatura-cartao-nome')?.value || (userData?.nomeCartao1 || 'Cartão 1');
+      const dtVenc = document.getElementById('inp-fatura-vencimento')?.value;
+
+      if (!faturaItensPreview.length) {
+        toastMsg('⚠️ Nenhum item para salvar.');
+        return;
+      }
+
+      let mesAno = 'Outros';
+      if (dtVenc) {
+        const [ano, mes] = dtVenc.split('-');
+        mesAno = `${ano}-${mes}`;
+      } else {
+        const d = new Date();
+        const mStr = String(d.getMonth() + 1).padStart(2, '0');
+        mesAno = `${d.getFullYear()}-${mStr}`;
+      }
+
+      const valTotal = faturaItensPreview.reduce((a, b) => a + b.valor, 0);
+      const docId = 'fat_' + Date.now();
+
+      try {
+        await setDoc(doc(db, COLL_FATURAS, docId), {
+          id: docId,
+          userId: currentUser.uid,
+          cartao: cartaoNome,
+          dataVencimento: dtVenc || '',
+          mesAno: mesAno,
+          valorTotal: valTotal,
+          qtdItens: faturaItensPreview.length,
+          itens: faturaItensPreview,
+          createdAt: serverTimestamp()
+        });
+
+        faturaFileSelecionado = null;
+        faturaItensPreview = [];
+        document.getElementById('box-revisao-fatura').style.display = 'none';
+        document.getElementById('txt-file-fatura').textContent = 'Clique para Selecionar o Arquivo da Fatura';
+        if (document.getElementById('inp-fatura-txt')) document.getElementById('inp-fatura-txt').value = '';
+
+        toastMsg('✨ Fatura de Cartão salva com sucesso no sistema!');
+      } catch (err) {
+        toastMsg('❌ Erro ao salvar fatura: ' + err.message);
+      }
+    }
+    window.confirmarEGravarFaturaDocumento = confirmarEGravarFaturaDocumento;
+
+    let boletoFileSelecionado = null;
+
+    function handleFileBoletoSelect(e) {
+      if (e.target.files && e.target.files[0]) {
+        boletoFileSelecionado = e.target.files[0];
+        const txtEl = document.getElementById('txt-file-boleto');
+        if (txtEl) txtEl.textContent = `📄 Boleto Selecionado: ${boletoFileSelecionado.name}`;
+      }
+    }
+    window.handleFileBoletoSelect = handleFileBoletoSelect;
+
+    function atualizarMesRefBoleto() {
+      const dtVal = document.getElementById('inp-boleto-vencimento')?.value;
+      const lbl = document.getElementById('lbl-boleto-mes-ref');
+      if (!lbl) return;
+      if (!dtVal) {
+        lbl.textContent = 'Mês do Boleto';
+        return;
+      }
+      const [ano, mes] = dtVal.split('-');
+      const dObj = new Date(parseInt(ano), parseInt(mes) - 1, 1);
+      const nomeStr = dObj.toLocaleString('pt-BR', { month: 'long' });
+      lbl.textContent = `Boleto de ${nomeStr.charAt(0).toUpperCase() + nomeStr.slice(1)} de ${ano}`;
+    }
+    window.atualizarMesRefBoleto = atualizarMesRefBoleto;
+
+    function atualizarValorTotalRevisaoBoleto() {
+      const val = parseFloat(document.getElementById('inp-revisao-boleto-val')?.value) || 0;
+      const badge = document.getElementById('badge-total-preview-boleto');
+      if (badge) badge.textContent = brl(val);
+    }
+    window.atualizarValorTotalRevisaoBoleto = atualizarValorTotalRevisaoBoleto;
+
+    async function importarBoletoManualOuArquivo() {
+      const txtManual = document.getElementById('inp-boleto-txt')?.value || '';
+
+      let textoBruto = txtManual;
+      if (boletoFileSelecionado) {
+        toastMsg('⏳ Lendo boleto...');
+        const textoArq = await lerTextoDeArquivo(boletoFileSelecionado);
+        if (textoArq) textoBruto += '\n' + textoArq;
+      }
+
+      if (!textoBruto.trim()) {
+        toastMsg('⚠️ Selecione o arquivo do boleto (.pdf, .txt) ou cole o texto/linha digitável.');
+        return;
+      }
+
+      let descDetectada = 'Boleto / Conta';
+      let valorDetectado = 0;
+
+      const termosEmpresas = ['CPFL', 'ENEL', 'SABESP', 'NET', 'CLARO', 'VIVO', 'TIM', 'CONDOMINIO', 'ALUGUEL', 'INTERNET', 'AGUA', 'LUZ', 'GAS', 'ESCOLA', 'FACULDADE', 'SEGURO', 'BANCO'];
+      for (let t of termosEmpresas) {
+        if (new RegExp('\\b' + t + '\\b', 'i').test(textoBruto)) {
+          descDetectada = `Conta ${t}`;
+          break;
+        }
+      }
+
+      const matchPreco = textoBruto.match(/(?:VALOR|TOTAL|VALOR DO DOCUMENTO|VALOR A PAGAR|PAGAR|R\$).*?(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+\.\d{2})/i) || textoBruto.match(/(\d{1,3}(?:\.\d{3})*,\d{2})/);
+      if (matchPreco) {
+        valorDetectado = parseFloat(matchPreco[1].replace(/\./g, '').replace(',', '.')) || 0;
+      }
+
+      document.getElementById('inp-revisao-boleto-desc').value = descDetectada;
+      document.getElementById('inp-revisao-boleto-val').value = valorDetectado || '';
+      atualizarValorTotalRevisaoBoleto();
+
+      document.getElementById('box-revisao-boleto').style.display = 'block';
+      toastMsg(`✅ Boleto identificado! Valor: ${brl(valorDetectado)}`);
+    }
+    window.importarBoletoManualOuArquivo = importarBoletoManualOuArquivo;
+
+    async function confirmarEGravarBoletoDocumento() {
+      if (!currentUser) return;
+      const desc = document.getElementById('inp-revisao-boleto-desc')?.value.trim() || 'Boleto Cadastrado';
+      const val = parseFloat(document.getElementById('inp-revisao-boleto-val')?.value) || 0;
+      const dtVenc = document.getElementById('inp-boleto-vencimento')?.value;
+
+      if (val <= 0) {
+        toastMsg('⚠️ Por favor, informe um valor válido para o boleto.');
+        return;
+      }
+
+      let mesAno = 'Outros';
+      if (dtVenc) {
+        const [ano, mes] = dtVenc.split('-');
+        mesAno = `${ano}-${mes}`;
+      } else {
+        const d = new Date();
+        const mStr = String(d.getMonth() + 1).padStart(2, '0');
+        mesAno = `${d.getFullYear()}-${mStr}`;
+      }
+
+      const docId = 'bol_' + Date.now();
+
+      try {
+        await setDoc(doc(db, COLL_BOLETOS, docId), {
+          id: docId,
+          userId: currentUser.uid,
+          descricao: desc,
+          valorTotal: val,
+          valor: val,
+          dataVencimento: dtVenc || '',
+          mesAno: mesAno,
+          createdAt: serverTimestamp()
+        });
+
+        boletoFileSelecionado = null;
+        document.getElementById('box-revisao-boleto').style.display = 'none';
+        document.getElementById('txt-file-boleto').textContent = 'Clique para Selecionar o Arquivo do Boleto';
+        if (document.getElementById('inp-boleto-txt')) document.getElementById('inp-boleto-txt').value = '';
+
+        toastMsg('✨ Boleto / Conta cadastrado com sucesso!');
+      } catch (err) {
+        toastMsg('❌ Erro ao salvar boleto: ' + err.message);
+      }
+    }
+    window.confirmarEGravarBoletoDocumento = confirmarEGravarBoletoDocumento;
+
+    // ═════════════════════════════════════════════════════════════════════════
     // 5. LÓGICA DA ABA BOLETOS & CONTAS
     // ═════════════════════════════════════════════════════════════════════════
     function getNomeBoleto(b) {
